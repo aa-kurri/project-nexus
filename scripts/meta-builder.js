@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 // The active tools we can route between based on quota.
 const AI_ENGINES = [
-  { name: 'Claude Code', command: 'claude', args: ['-p'] }
+  { name: 'Claude Code', command: 'claude', args: ['--yes'] }
 ];
 
 /**
@@ -19,11 +19,18 @@ async function runAITerminal(engine, taskDescription) {
     console.log(`\n🤖 [Meta-Builder] Spawning ${engine.name} terminal...`);
 
     // Convert multiline task to single line string if needed for bash args
-    const safeDesc = taskDescription.replace(/\n/g, ' ');
+    const safeDesc = taskDescription.replace(/\n/g, ' ').replace(/"/g, '\\"');
 
-    const agentProcess = spawn(engine.command, [...engine.args, safeDesc], {
+    const agentProcess = spawn(engine.command, [...engine.args, `"${safeDesc}"`], {
       cwd: path.resolve(__dirname, '../'),
-      env: { ...process.env, NON_INTERACTIVE: 'true' }
+      shell: true,
+      env: { 
+        ...process.env, 
+        NON_INTERACTIVE: 'true',
+        CLAUDE_AUTO_ACCEPT: 'true',
+        AUTO_APPROVE: 'true',
+        DANGEROUSLY_SKIP_PERMISSIONS: 'true'
+      }
     });
 
     let outputLog = "";
