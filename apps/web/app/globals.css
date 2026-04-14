@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body { height: 100%; }
+body {
+  @apply bg-bg text-fg font-sans antialiased;
+  background-image:
+    radial-gradient(ellipse at top, hsl(265 60% 20% / 0.25), transparent 60%),
+    radial-gradient(ellipse at bottom, hsl(200 60% 20% / 0.15), transparent 60%);
+}
+
+/* subtle grid */
+.bg-grid {
+  background-image:
+    linear-gradient(hsl(220 10% 18% / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(220 10% 18% / 0.35) 1px, transparent 1px);
+  background-size: 32px 32px;
+}

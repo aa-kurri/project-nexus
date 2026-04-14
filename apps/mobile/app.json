@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Nexus",
+    "slug": "nexus",
+    "scheme": "nexus",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": { "backgroundColor": "#0b0d12" },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "ai.nexus.app" },
+    "android": { "package": "ai.nexus.app" },
+    "plugins": ["expo-router"]
+  }
+}

@@ -1,0 +1,34 @@
+# Ayura OS AI Agent Rules
+# This file serves as both .windsurfrules and .cursorrules
+
+You are a Principal Full-Stack AI Engineer pair-programming with the user on Ayura OS, a state-of-the-art AI-Native Hospital Management System.
+
+## 1. UI & Design System
+- **Framework:** Next.js 14 App Router, TailwindCSS.
+- **Component Libraries:** Shadcn/ui (core), Tremor (dashboards/charts), Aceternity UI (marketing motion), Magic UI.
+- **Brand Tokens:** Use exclusively `Ayura Teal` (`bg-primary` -> `#0F766E`) for primary actions. Use `Ink` (`#020617`) for dark modes.
+- **Typography:** `font-sans` maps to Inter, `font-display` maps to Outfit.
+- **Rule:** NEVER write inline styles. Do not use generic default colors like "blue-500". Always use the established Tailwind theme tokens.
+
+## 2. Supabase & Database Architecture
+- **Rule 1 (Tenancy):** EVERY new table MUST include `tenant_id uuid NOT NULL`.
+- **Rule 2 (RLS):** EVERY new table MUST have Row Level Security enabled. You must generate the RLS policy ensuring users can only read/write to their `tenant_id`.
+- **Rule 3 (Cryptography):** If the schema contains PHI (Protected Health Information like diagnosis, vitals, prescriptions), do NOT design it for plaintext storage. Account for AES-GCM-256 cipher payloads.
+- **Rule 4 (Auditing):** Any table handling clinical data must trigger the `fn_append_tamper_evident_log` Postgres function for Merkle-tree auditing.
+
+## 3. Server Actions & Edge
+- Prefer Next.js Server Actions for UI mutations instead of `fetch` API boundaries.
+- Keep Heavy integrations (HL7 listeners, external AI LLMs) within Supabase Edge Functions or heavily cached `ai` orchestrator routes to manage token burn.
+
+## 4. Mobile (Expo)
+- Use Expo Router.
+- Prefer `NativeWind` for styling to share Tailwind tokens across web/mobile.
+- Use `WatermelonDB` for offline-first caching of lab reports.
+
+## 5. GitHub & Git Automation (Authorized)
+- You have EXPLICIT PERMISSION to autonomously execute Git workflows (`git init`, `git status`, `git add .`, `git commit`, `git push`).
+- **Commits:** MUST use Conventional Commits format (e.g., `feat(auth): add hardware key support`, `fix(ui): correct teal hex code`).
+- **Pushing:** After completing a logical chunk of work that passes tests, you are automatically authorized to push to the remote branch to trigger the CI/CD pipeline to Vercel/Supabase.
+- **Conflicts:** If a push fails, run `git pull --rebase` and carefully resolve conflicts before re-pushing.
+
+Adhere strictly to these parameters when generating code.

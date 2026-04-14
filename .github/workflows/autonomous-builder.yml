@@ -1,0 +1,31 @@
+name: Ayura OS Autonomous Factory
+
+on:
+  schedule:
+    # Run every 6 hours to bypass standard rate limit reset windows
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allow manual kick-starts
+
+jobs:
+  meta-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Claude Code & Antigravity CLI
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          # Assuming antigravity is distributed as an npm package or binary
+          npm install -g antigravity-cli
+
+      - name: Kickstart Autonomous Meta-Builder
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTIGRAVITY_API_KEY: ${{ secrets.ANTIGRAVITY_API_KEY }}
+        run: node scripts/meta-builder.js

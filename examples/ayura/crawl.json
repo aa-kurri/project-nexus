@@ -1,0 +1,273 @@
+{
+  "url": "https://www.vaidyo.in/",
+  "fetchedAt": "2026-04-14T03:22:03.665Z",
+  "authUsed": true,
+  "authUser": "258admin",
+  "domTree": {
+    "kind": "unknown",
+    "text": "You need to enable JavaScript to run this app.LoginHomeAbout UsProductsLIMSHMSContact UsControl_ Your HospitalHospitals And Healthcare Facilities Can Manage The",
+    "children": [
+      {
+        "kind": "unknown",
+        "text": "LoginHomeAbout UsProductsLIMSHMSContact UsControl_ Your HospitalHospitals And Healthcare Facilities Can Manage Their Operations More Successfully With The Use O",
+        "children": [
+          {
+            "kind": "unknown",
+            "text": "LoginHomeAbout UsProductsLIMSHMSContact Us",
+            "children": [
+              {
+                "kind": "unknown",
+                "text": "LoginHomeAbout UsProductsLIMSHMSContact Us",
+                "children": [
+                  {
+                    "kind": "nav",
+                    "text": "LoginHomeAbout UsProductsLIMSHMSContact Us",
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "kind": "hero",
+            "text": "Control_ Your HospitalHospitals And Healthcare Facilities Can Manage Their Operations More Successfully With The Use Of The Software System Vaidyo.",
+            "children": []
+          },
+          {
+            "kind": "footer",
+            "text": "As a Vaidyo customer, you will gain a partner with extensive industry knowledge and best practices, a comprehensive platform to future-proof and expand your bus",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "designTokens": {
+    "colors": {
+      "primary": [
+        "rgb(0, 0, 0)",
+        "rgb(255, 255, 255)",
+        "rgb(48, 109, 179)"
+      ],
+      "neutral": [
+        "rgb(93, 145, 206)",
+        "rgb(67, 131, 205)",
+        "rgb(169, 199, 233)",
+        "rgb(228, 237, 247)",
+        "rgb(211, 220, 230)"
+      ],
+      "semantic": {}
+    },
+    "typography": {
+      "families": [
+        "Heebo"
+      ],
+      "scale": [
+        {
+          "name": "xs",
+          "size": "16px",
+          "lineHeight": "1.5"
+        },
+        {
+          "name": "sm",
+          "size": "18px",
+          "lineHeight": "1.5"
+        },
+        {
+          "name": "base",
+          "size": "12px",
+          "lineHeight": "1.5"
+        },
+        {
+          "name": "lg",
+          "size": "20px",
+          "lineHeight": "1.5"
+        },
+        {
+          "name": "xl",
+          "size": "14px",
+          "lineHeight": "1.5"
+        },
+        {
+          "name": "2xl",
+          "size": "24px",
+          "lineHeight": "1.5"
+        }
+      ]
+    },
+    "spacing": [
+      12,
+      8,
+      16,
+      60,
+      10,
+      20
+    ],
+    "radii": [
+      9999,
+      12,
+      8,
+      4
+    ]
+  },
+  "seo": {
+    "title": "Vaidyo - a Hospital Management Software",
+    "description": "Web site created using create-react-app",
+    "canonical": null,
+    "og": {},
+    "jsonLd": []
+  },
+  "forms": [],
+  "pages": {
+    "https://www.vaidyo.in/": {
+      "title": "Vaidyo - a Hospital Management Software",
+      "h1": "Manage_ Your Hospital",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "Manage_ Your Hospital"
+        },
+        {
+          "level": "H2",
+          "text": "About Us"
+        },
+        {
+          "level": "H2",
+          "text": "Our Software is Revolutionizing Business!."
+        },
+        {
+          "level": "H2",
+          "text": "Grow Better With Vaidyo"
+        },
+        {
+          "level": "H2",
+          "text": "Hospital Management System"
+        },
+        {
+          "level": "H2",
+          "text": "Any Questions? Find here."
+        },
+        {
+          "level": "H2",
+          "text": "Testimonials"
+        },
+        {
+          "level": "H2",
+          "text": "Requirement of New Channel Partners"
+        }
+      ]
+    },
+    "https://www.vaidyo.in/about": {
+      "title": "HTTP Status 404 – Not Found",
+      "h1": "HTTP Status 404 – Not Found",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "HTTP Status 404 – Not Found"
+        },
+        {
+          "level": "H3",
+          "text": "Apache Tomcat/8.5.89"
+        }
+      ]
+    },
+    "https://www.vaidyo.in/product/lims": {
+      "title": "HTTP Status 404 – Not Found",
+      "h1": "HTTP Status 404 – Not Found",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "HTTP Status 404 – Not Found"
+        },
+        {
+          "level": "H3",
+          "text": "Apache Tomcat/8.5.89"
+        }
+      ]
+    },
+    "https://www.vaidyo.in/product/hms": {
+      "title": "HTTP Status 404 – Not Found",
+      "h1": "HTTP Status 404 – Not Found",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "HTTP Status 404 – Not Found"
+        },
+        {
+          "level": "H3",
+          "text": "Apache Tomcat/8.5.89"
+        }
+      ]
+    },
+    "https://www.vaidyo.in/contact": {
+      "title": "HTTP Status 404 – Not Found",
+      "h1": "HTTP Status 404 – Not Found",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "HTTP Status 404 – Not Found"
+        },
+        {
+          "level": "H3",
+          "text": "Apache Tomcat/8.5.89"
+        }
+      ]
+    },
+    "https://www.vaidyo.in/terms&conditions": {
+      "title": "HTTP Status 404 – Not Found",
+      "h1": "HTTP Status 404 – Not Found",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "HTTP Status 404 – Not Found"
+        },
+        {
+          "level": "H3",
+          "text": "Apache Tomcat/8.5.89"
+        }
+      ]
+    },
+    "https://www.vaidyo.in/privacy-policy": {
+      "title": "HTTP Status 404 – Not Found",
+      "h1": "HTTP Status 404 – Not Found",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "HTTP Status 404 – Not Found"
+        },
+        {
+          "level": "H3",
+          "text": "Apache Tomcat/8.5.89"
+        }
+      ]
+    },
+    "https://www.vaidyo.in/refund-policy": {
+      "title": "HTTP Status 404 – Not Found",
+      "h1": "HTTP Status 404 – Not Found",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "HTTP Status 404 – Not Found"
+        },
+        {
+          "level": "H3",
+          "text": "Apache Tomcat/8.5.89"
+        }
+      ]
+    },
+    "https://www.vaidyo.in/disclaimer": {
+      "title": "HTTP Status 404 – Not Found",
+      "h1": "HTTP Status 404 – Not Found",
+      "headings": [
+        {
+          "level": "H1",
+          "text": "HTTP Status 404 – Not Found"
+        },
+        {
+          "level": "H3",
+          "text": "Apache Tomcat/8.5.89"
+        }
+      ]
+    }
+  }
+}

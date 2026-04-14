@@ -1,0 +1,14 @@
+{
+  "name": "nexus-scripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "crawl": "node --env-file=../.env.local run-crawl.mjs",
+    "prd": "node --env-file=../.env.local run-prd.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "playwright": "^1.44.0"
+  }
+}
