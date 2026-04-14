@@ -12,6 +12,7 @@
   "dependencies": {
     "@nexus/shared-logic": "workspace:*",
     "@supabase/supabase-js": "^2.43.0",
+    "lucide-react-native": "^0.378.0",
     "expo": "~51.0.0",
     "expo-router": "~3.5.0",
     "expo-status-bar": "~1.12.0",

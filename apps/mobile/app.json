@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Nexus",
-    "slug": "nexus",
-    "scheme": "nexus",
-    "version": "0.1.0",
+    "name": "Ayura Patient",
+    "slug": "ayura",
+    "scheme": "ayura",
+    "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": { "backgroundColor": "#0b0d12" },
-    "ios": { "supportsTablet": true, "bundleIdentifier": "ai.nexus.app" },
-    "android": { "package": "ai.nexus.app" },
-    "plugins": ["expo-router"]
+    "splash": { "backgroundColor": "#0F766E" },
+    "ios": { "supportsTablet": false, "bundleIdentifier": "health.ayura.patient" },
+    "android": { "package": "health.ayura.patient", "adaptiveIcon": { "backgroundColor": "#0F766E" } },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true }
   }
 }
