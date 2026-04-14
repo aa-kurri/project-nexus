@@ -11,11 +11,15 @@
     "S-PHARM-3",
     "S-AI-1",
     "S-AI-2",
-    "S-AI-3"
+    "S-AI-3",
+    "S-ANALYTICS-1",
+    "S-BILL-1",
+    "S-BILL-2",
+    "S-LIMS-1",
+    "S-LIMS-2",
+    "S-APP-1"
   ],
-  "skipped": [
-    "S-PHARM-1"
-  ],
-  "last_run": "2026-04-14T14:25:26.617Z",
+  "skipped": [],
+  "last_run": null,
   "last_slug": null
 }
