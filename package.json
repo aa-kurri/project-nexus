@@ -15,7 +15,8 @@
     "typecheck": "pnpm -r typecheck",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
-    "crawl:test": "tsx scripts/test-crawl.ts"
+    "crawl:test": "tsx scripts/test-crawl.ts",
+    "auto-build": "node scripts/meta-builder.js"
   },
   "devDependencies": {
     "typescript": "^5.4.5",
