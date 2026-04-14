@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Project Nexus",
   description: "URL → PRD → Sprint backlog → Production code. One pipeline.",
