@@ -8,10 +8,7 @@ const __dirname = path.dirname(__filename);
 
 // The active tools we can route between based on quota.
 const AI_ENGINES = [
-  { name: 'Claude Code', command: 'claude', args: ['-p'] },
-  { name: 'Aider AI', command: 'aider', args: ['--no-gui', '--yes', '--message'] },
-  { name: 'Open Interpreter', command: 'interpreter', args: ['--auto_run', '--os', '--prompt'] },
-  { name: 'Cursor CLI', command: 'cursor', args: ['--prompt'] }
+  { name: 'Claude Code', command: 'claude', args: ['-p'] }
 ];
 
 /**
@@ -20,7 +17,7 @@ const AI_ENGINES = [
 async function runAITerminal(engine, taskDescription) {
   return new Promise((resolve, reject) => {
     console.log(`\n🤖 [Meta-Builder] Spawning ${engine.name} terminal...`);
-    
+
     // Convert multiline task to single line string if needed for bash args
     const safeDesc = taskDescription.replace(/\n/g, ' ');
 
@@ -53,6 +50,13 @@ async function runAITerminal(engine, taskDescription) {
         agentProcess.kill('SIGINT');
         reject(new Error('QUOTA_EXCEEDED'));
       }
+
+      // Specifically intercept the Antigravity Electron UI Ghost Bug
+      if (text.includes('Electron/Chromium') || text.includes("not in the list of known options")) {
+        console.log(`\n⚠️ [Meta-Builder] Detected GUI ghosting bypass in ${engine.name}. Rejecting task.`);
+        agentProcess.kill('SIGINT');
+        reject(new Error('GUI_GHOST_BYPASS'));
+      }
     });
 
     agentProcess.on('error', (err) => {
@@ -82,9 +86,9 @@ async function runAITerminal(engine, taskDescription) {
 function parseTasksFromStories() {
   const storiesPath = path.resolve(__dirname, '../examples/ayura/STORIES.md');
   const markdown = fs.readFileSync(storiesPath, 'utf8');
-  
+
   const tasks = [];
-  
+
   // Extract all lines that look like "Scenario: Something happens"
   const scenarioRegex = /Scenario:\s*(.+)/g;
   let match;
@@ -103,7 +107,7 @@ async function orchestrateAyuraBuild() {
   console.log("🚀 =============================================");
   console.log("🚀 Starting Autonomous Ayura OS Build Pipeline");
   console.log("🚀 =============================================\n");
-  
+
   // 1. Core Bootstrapping (Zero-Human Stack Initialization)
   const bootstrapTasks = [
     `Create a new Next.js 14 App Router project inside apps/web. Use TailwindCSS and TypeScript. Configure the theme exactly to match the tokens defined in examples/ayura/COMPONENT_MAPPING.md (Ayura Teal #0F766E). Run 'npx shadcn-ui@latest init' globally without human limits.`,
@@ -122,7 +126,7 @@ async function orchestrateAyuraBuild() {
   for (const [index, task] of masterQueue.entries()) {
     console.log(`\n--- ⚙️ Executing Task ${index + 1}/${masterQueue.length} ---`);
     console.log(`Objective: ${task.substring(0, 100)}...`);
-    
+
     let taskCompleted = false;
 
     // Infinite retry loop for this specific task
@@ -131,16 +135,16 @@ async function orchestrateAyuraBuild() {
         try {
           await runAITerminal(engine, task);
           taskCompleted = true;
-          
+
           // At the end of every successful task, commit the chunk to GitHub.
           console.log(`📦 Autonomous Commit Checkpoint...`);
           spawn('git', ['add', '.', '&&', 'git', 'commit', '-am', `"feat(auto-build): completed task ${index + 1}"`], { shell: true });
-          
+
           break; // Break engine loop, move to next task
         } catch (error) {
           if (error.message === 'QUOTA_EXCEEDED') {
             console.log(`🔄 [Meta-Builder] Quota burnt in ${engine.name}. Rerouting...`);
-            continue; 
+            continue;
           } else {
             console.error(`❌ [Meta-Builder] Execution Error in ${engine.name} (${error.message}). Trying alternative engine...`);
             continue;
