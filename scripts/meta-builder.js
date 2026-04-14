@@ -11,8 +11,7 @@ const AI_ENGINES = [
   { name: 'Claude Code', command: 'claude', args: ['-p'] },
   { name: 'Aider AI', command: 'aider', args: ['--no-gui', '--yes', '--message'] },
   { name: 'Open Interpreter', command: 'interpreter', args: ['--auto_run', '--os', '--prompt'] },
-  { name: 'Cursor CLI', command: 'cursor', args: ['--prompt'] },
-  { name: 'Antigravity', command: 'antigravity', args: ['--task'] }
+  { name: 'Cursor CLI', command: 'cursor', args: ['--prompt'] }
 ];
 
 /**
@@ -38,15 +37,22 @@ async function runAITerminal(engine, taskDescription) {
       process.stdout.write(text); // Pipe output to master terminal
 
       // Intercept quota errors across multiple CLI formats
-      if (text.toLowerCase().includes('quota exceeded') || text.toLowerCase().includes('429 too many requests')) {
-        console.log(`\n⚠️ [Meta-Builder] Quota limit detected in ${engine.name}. Terminating process.`);
+      if (text.toLowerCase().includes('quota exceeded') || text.toLowerCase().includes('429 too many requests') || text.toLowerCase().includes('credit balance is too low')) {
+        console.log(`\n⚠️ [Meta-Builder] Quota limit detected in ${engine.name} stdout. Terminating process.`);
         agentProcess.kill('SIGINT');
         reject(new Error('QUOTA_EXCEEDED'));
       }
     });
 
     agentProcess.stderr.on('data', (data) => {
-      console.error(`[${engine.name} Stderr]: ${data}`);
+      const text = data.toString();
+      console.error(`[${engine.name} Stderr]: ${text}`);
+
+      if (text.toLowerCase().includes('quota exceeded') || text.toLowerCase().includes('429 too many requests') || text.toLowerCase().includes('credit balance is too low')) {
+        console.log(`\n⚠️ [Meta-Builder] Quota limit detected in ${engine.name} stderr. Terminating process.`);
+        agentProcess.kill('SIGINT');
+        reject(new Error('QUOTA_EXCEEDED'));
+      }
     });
 
     agentProcess.on('error', (err) => {
