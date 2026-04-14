@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "crawl": "node --env-file=../.env.local run-crawl.mjs",
-    "prd": "node --env-file=../.env.local run-prd.mjs"
+    "prd": "node --env-file=../.env.local run-prd.mjs",
+    "build:next": "node story-runner.js",
+    "build:status": "node story-runner.js --status",
+    "build:slug": "node story-runner.js --slug"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",

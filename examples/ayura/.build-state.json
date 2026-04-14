@@ -1,0 +1,19 @@
+{
+  "completed": [
+    "S-ABDM-1",
+    "S-AUTH-1",
+    "S-AUTH-2",
+    "S-AUTH-3",
+    "S-EMR-1",
+    "S-EMR-2",
+    "S-OPD-1",
+    "S-IPD-1",
+    "S-PHARM-3",
+    "S-AI-1",
+    "S-AI-2",
+    "S-AI-3"
+  ],
+  "skipped": [],
+  "last_run": null,
+  "last_slug": null
+}

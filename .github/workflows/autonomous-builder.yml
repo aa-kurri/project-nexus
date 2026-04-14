@@ -1,31 +1,129 @@
-name: Ayura OS Autonomous Factory
+name: Ayura OS — Autonomous Story Builder
 
+# Self-re-triggering loop:
+#   story-runner commits a story → push fires this workflow → next story runs.
+#   When all stories are done, runner exits 0 with no commit → no new push → loop stops.
 on:
-  schedule:
-    # Run every 6 hours to bypass standard rate limit reset windows
-    - cron: '0 */6 * * *'
-  workflow_dispatch: # Allow manual kick-starts
+  push:
+    branches: [main]
+    paths:
+      # Only re-trigger when the state file or source code changes, not docs.
+      - "examples/ayura/.build-state.json"
+      - "apps/web/**"
+      - "packages/**"
+      - "supabase/**"
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Force a specific story slug (e.g. S-LIMS-1). Leave blank for next pending."
+        required: false
+        default: ""
+      status_only:
+        description: "Print queue status without building"
+        type: boolean
+        default: false
+
+# Prevent two builds running in parallel; never cancel an in-flight build.
+concurrency:
+  group: ayura-autonomous-build
+  cancel-in-progress: false
 
 jobs:
-  meta-build:
+  build-story:
+    name: Build next story
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    timeout-minutes: 30
 
-      - name: Install Node.js
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need full history so git commit works and push reaches origin.
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Guard: skip if triggered by the bot's own non-story commits ────────
+      - name: Check last commit author
+        id: guard
+        run: |
+          AUTHOR=$(git log -1 --format="%an")
+          MSG=$(git log -1 --format="%s")
+          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+          echo "msg=$MSG" >> $GITHUB_OUTPUT
+          # Skip runs triggered by CI infra commits (e.g. bumping config files)
+          if [[ "$AUTHOR" == "github-actions[bot]" && "$MSG" != feat* ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Skip non-story commits
+        if: steps.guard.outputs.skip == 'true'
+        run: |
+          echo "ℹ️ Triggered by a non-story commit — skipping build."
+          exit 0
+
+      # ── Toolchain ───────────────────────────────────────────────────────────
+      - name: Setup Node 20
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Claude Code & Antigravity CLI
-        run: |
-          npm install -g @anthropic-ai/claude-code
-          # Assuming antigravity is distributed as an npm package or binary
-          npm install -g antigravity-cli
+      - name: Install Claude Code CLI
+        if: steps.guard.outputs.skip != 'true'
+        run: npm install -g @anthropic-ai/claude-code
 
-      - name: Kickstart Autonomous Meta-Builder
+      # ── Check build state before doing any work ─────────────────────────────
+      - name: Check remaining stories
+        if: steps.guard.outputs.skip != 'true'
+        id: check
+        run: |
+          node scripts/story-runner.js --status
+          # Capture exit code: 0 = stories remain (or all done), read stdout for "all done"
+          OUTPUT=$(node scripts/story-runner.js --status 2>&1)
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "All stories shipped"; then
+            echo "done=true" >> $GITHUB_OUTPUT
+          else
+            echo "done=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: All stories complete — stop loop
+        if: steps.check.outputs.done == 'true'
+        run: |
+          echo "🎉 All Ayura OS stories have shipped. Loop complete."
+          exit 0
+
+      # ── Build the next story ─────────────────────────────────────────────────
+      - name: Build story
+        if: steps.check.outputs.done != 'true' && steps.guard.outputs.skip != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTIGRAVITY_API_KEY: ${{ secrets.ANTIGRAVITY_API_KEY }}
-        run: node scripts/meta-builder.js
+          # Needed for Claude Code to skip interactive prompts in CI
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+        run: |
+          SLUG="${{ github.event.inputs.slug }}"
+          STATUS="${{ github.event.inputs.status_only }}"
+
+          if [ "$STATUS" = "true" ]; then
+            node scripts/story-runner.js --status
+            exit 0
+          fi
+
+          if [ -n "$SLUG" ]; then
+            node scripts/story-runner.js --slug "$SLUG"
+          else
+            node scripts/story-runner.js
+          fi
+
+      # ── Push the commit story-runner made ───────────────────────────────────
+      - name: Push story commit
+        if: steps.check.outputs.done != 'true' && steps.guard.outputs.skip != 'true'
+        run: |
+          git config user.name  "Ayura Story Runner"
+          git config user.email "bot@ayura.health"
+          # story-runner already committed; just push.
+          # If nothing was committed (no file changes), this is a no-op.
+          git push origin main || echo "Nothing to push."
