@@ -5,10 +5,7 @@ module.exports = {
     "@nexus/ai-orchestrator",
     "@nexus/sprint-engine",
   ],
-  experimental: { 
-    serverActions: { bodySizeLimit: "4mb" },
-    serverComponentsExternalPackages: ["playwright", "playwright-core"]
-  },
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   typescript: {
     ignoreBuildErrors: true,
   },

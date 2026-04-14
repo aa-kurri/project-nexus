@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@nexus/ai-orchestrator": "workspace:*",
-    "@nexus/crawler-engine": "workspace:*",
     "@nexus/shared-logic": "workspace:*",
     "@nexus/sprint-engine": "workspace:*",
     "@supabase/ssr": "^0.3.0",
