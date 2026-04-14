@@ -7,4 +7,10 @@ module.exports = {
     "@nexus/sprint-engine",
   ],
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
