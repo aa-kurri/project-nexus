@@ -16,6 +16,8 @@ import BarcodeTracker from '@/components/lims/BarcodeTracker';
 import HL7Analyzer from '@/components/lims/HL7Analyzer';
 import WhatsAppConcierge from '@/components/app/WhatsAppConcierge';
 import BlindStockSync from '@/components/pharmacy/BlindStockSync';
+import TenantOnboarding from '@/components/auth/TenantOnboarding';
+import PatientRegistration from '@/components/emr/PatientRegistration';
 
 const MODULES = [
   { id: 'timeline', label: 'EMR Timeline', component: <div className="p-8 flex justify-center"><PatientTimeline /></div> },
@@ -29,6 +31,8 @@ const MODULES = [
   { id: 'claims', label: 'AI Claim Drafter', component: <div className="p-8"><AgenticClaimDrafter /></div> },
   { id: 'pharm-dash', label: 'Pharmacy Dashboard', component: <div className="p-8"><PharmacyDashboard /></div> },
   { id: 'pharm-sync', label: 'Zero-Trust Stock Sync', component: <div className="p-8"><BlindStockSync /></div> },
+  { id: 'tenant', label: 'Tenant Provisioning', component: <TenantOnboarding /> },
+  { id: 'patient-reg', label: 'Fast EMR Registration', component: <div className="p-8"><PatientRegistration /></div> },
   { id: 'patient-login', label: 'Patient OTP Auth', component: <PatientLogin /> },
   { id: 'patient-app', label: 'Mobile AI Concierge', component: <WhatsAppConcierge /> },
 ];
