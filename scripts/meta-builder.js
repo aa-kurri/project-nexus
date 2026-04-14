@@ -8,8 +8,11 @@ const __dirname = path.dirname(__filename);
 
 // The active tools we can route between based on quota.
 const AI_ENGINES = [
-  { name: 'Antigravity', command: 'antigravity', args: ['--task'] },
-  { name: 'Claude Code', command: 'claude', args: ['-p'] } // Claude Code explicitly authorized
+  { name: 'Claude Code', command: 'claude', args: ['-p'] },
+  { name: 'Aider AI', command: 'aider', args: ['--no-gui', '--yes', '--message'] },
+  { name: 'Open Interpreter', command: 'interpreter', args: ['--auto_run', '--os', '--prompt'] },
+  { name: 'Cursor CLI', command: 'cursor', args: ['--prompt'] },
+  { name: 'Antigravity', command: 'antigravity', args: ['--task'] }
 ];
 
 /**
@@ -44,6 +47,16 @@ async function runAITerminal(engine, taskDescription) {
 
     agentProcess.stderr.on('data', (data) => {
       console.error(`[${engine.name} Stderr]: ${data}`);
+    });
+
+    agentProcess.on('error', (err) => {
+      if (err.code === 'ENOENT') {
+        console.log(`⚠️ [Meta-Builder] ${engine.name} is not installed on this machine (ENOENT).`);
+        reject(new Error('NOT_INSTALLED'));
+      } else {
+        console.error(`❌ [Meta-Builder] Failed to start ${engine.name}: ${err.message}`);
+        reject(err);
+      }
     });
 
     agentProcess.on('close', (code) => {
@@ -98,37 +111,43 @@ async function orchestrateAyuraBuild() {
 
   const masterQueue = [...bootstrapTasks, ...featureTasks];
 
+  const waitMinutes = (m) => new Promise(resolve => setTimeout(resolve, m * 60000));
+
   for (const [index, task] of masterQueue.entries()) {
     console.log(`\n--- ⚙️ Executing Task ${index + 1}/${masterQueue.length} ---`);
     console.log(`Objective: ${task.substring(0, 100)}...`);
     
     let taskCompleted = false;
 
-    // Fallback logic loop
-    for (const engine of AI_ENGINES) {
-      try {
-        await runAITerminal(engine, task);
-        taskCompleted = true;
-        
-        // At the end of every successful task, commit the chunk to GitHub.
-        console.log(`📦 Autonomous Commit Checkpoint...`);
-        spawn('git', ['add', '.', '&&', 'git', 'commit', '-am', `"feat(auto-build): completed task ${index + 1}"`], { shell: true });
-        
-        break; // Break engine loop, move to next task
-      } catch (error) {
-        if (error.message === 'QUOTA_EXCEEDED') {
-          console.log(`🔄 [Meta-Builder] Quota burnt. Rerouting to next available agent...`);
-          continue; 
-        } else {
-          console.error(`❌ [Meta-Builder] Fatal Error during execution: ${error.message}`);
-          break;
+    // Infinite retry loop for this specific task
+    while (!taskCompleted) {
+      for (const engine of AI_ENGINES) {
+        try {
+          await runAITerminal(engine, task);
+          taskCompleted = true;
+          
+          // At the end of every successful task, commit the chunk to GitHub.
+          console.log(`📦 Autonomous Commit Checkpoint...`);
+          spawn('git', ['add', '.', '&&', 'git', 'commit', '-am', `"feat(auto-build): completed task ${index + 1}"`], { shell: true });
+          
+          break; // Break engine loop, move to next task
+        } catch (error) {
+          if (error.message === 'QUOTA_EXCEEDED') {
+            console.log(`🔄 [Meta-Builder] Quota burnt in ${engine.name}. Rerouting...`);
+            continue; 
+          } else {
+            console.error(`❌ [Meta-Builder] Execution Error in ${engine.name} (${error.message}). Trying alternative engine...`);
+            continue;
+          }
         }
       }
-    }
 
-    if (!taskCompleted) {
-      console.log("🛑 ALL AI ENGINES ARE TAPPED OUT ON QUOTA OR CRASHED. Pausing pipeline. Will retry automatically on next cron interval.");
-      process.exit(1); 
+      if (!taskCompleted) {
+        const sleepTime = 5; // Sleep for 5 minutes when all APIs are exhausted
+        console.log(`🛑 ALL AI ENGINES TAPPED OUT. Sleeping for ${sleepTime} minutes to wait for quota resets...`);
+        await waitMinutes(sleepTime);
+        console.log(`⏰ Waking up! Retrying Task ${index + 1}...`);
+      }
     }
   }
 
