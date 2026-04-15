@@ -28,9 +28,10 @@
     "S-OPD-2",
     "S-APP-2",
     "S-WEARABLE-1",
-    "S-OPD-3"
+    "S-OPD-3",
+    "S-LIMS-5"
   ],
   "skipped": [],
-  "last_run": "2026-04-15T03:18:15.887Z",
-  "last_slug": "S-OPD-3"
+  "last_run": "2026-04-15T16:05:11.749Z",
+  "last_slug": "S-LIMS-5"
 }
