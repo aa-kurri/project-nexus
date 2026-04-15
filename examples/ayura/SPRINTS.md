@@ -113,6 +113,17 @@
 | 5 | P1 | Per-tenant usage metering (AI tokens, storage, API calls) | `S-SAAS-4` |
 | 5 | P1 | White-label — custom domain + logo per tenant | `S-SAAS-5` |
 
+## Sprint 11 · 2026-09-07 → 2026-09-20 · **37 pts**
+**Goal:** Unified mobile app — all roles in one app, admin-controlled RBAC.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 8 | P0 | Role-based mobile nav shell + admin feature-flag panel | `S-MOB-RBAC` |
+| 8 | P0 | Doctor mobile screens (OPD queue, EMR chart, AI Scribe, Rx writer) | `S-MOB-DOCTOR` |
+| 8 | P0 | Admin mobile screens (KPI dashboard, bed board, billing, user-role manager) | `S-MOB-ADMIN` |
+| 8 | P1 | Staff mobile screens (vitals charting, Rx dispense, lab worklist, task board) | `S-MOB-STAFF` |
+| 5 | P1 | Patient app v2 (biometric lock, teleconsult, prescriptions, push notifications) | `S-MOB-PATIENT-V2` |
+
 ---
 
 ## Roadmap (Mermaid Gantt)

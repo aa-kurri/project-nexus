@@ -622,3 +622,148 @@ Scenario: Copilot answers from chart history
     And responds "Yes, started on Metformin 500mg by Dr. Rao in Oct 2024"
     And provides a clickable citation to the exact encounter
 ```
+
+---
+
+## Epic: E14 · Unified Mobile App (All Roles)
+
+### S-MOB-RBAC · Role-based Mobile Nav Shell · **P0** · 8 pts
+**As a** hospital admin
+**I want** to assign roles to users and toggle which features each role can access
+**So that** one app serves patients, doctors, admins, and staff with appropriate screens.
+
+```gherkin
+Scenario: Role-based tab navigation after login
+  Given a user logs in with OTP
+  When their profile role is "doctor"
+  Then the bottom tab bar shows: Queue | Patients | Scribe | Rx | More
+  When their profile role is "admin"
+  Then the bottom tab bar shows: Dashboard | Beds | Billing | Staff | More
+  When their profile role is "patient"
+  Then the bottom tab bar shows: Home | Appointments | Reports | Health | Profile
+
+Scenario: Admin toggles feature access
+  Given I am logged in as admin
+  When I open Settings > Feature Access
+  Then I see a role × feature matrix (doctor, nurse, pharmacist, lab_tech, patient)
+  When I toggle "AI Scribe" OFF for role "nurse"
+  Then nurses no longer see the Scribe tab after their next login
+```
+
+---
+
+### S-MOB-DOCTOR · Doctor Mobile Screens · **P0** · 8 pts
+**As a** doctor
+**I want** a mobile-first view of my OPD queue, patient charts, AI Scribe, and Rx writer
+**So that** I can do ward rounds and consults from my phone.
+
+```gherkin
+Scenario: OPD queue on mobile
+  Given I am a doctor with role "doctor"
+  When I open the Queue tab
+  Then I see today's token list with patient name, chief complaint, wait time
+  When I tap a token
+  Then I see the patient's last 3 encounters, active medications, and allergies
+
+Scenario: AI Scribe records consultation
+  Given I am in a patient encounter
+  When I tap the microphone and speak the consultation
+  Then the Scribe tab shows a live SOAP note transcript
+  When I tap "Save Note"
+  Then the encounter note is saved to the EMR
+
+Scenario: Rx writer
+  Given I am viewing a patient chart
+  When I tap "Write Rx"
+  Then I can search drug names and enter dose/frequency/duration
+  When I tap "Sign & Send"
+  Then the medication_request is created and visible to pharmacy
+```
+
+---
+
+### S-MOB-ADMIN · Admin Mobile Screens · **P0** · 8 pts
+**As a** hospital administrator
+**I want** a mobile dashboard with KPIs, bed board, billing summary, and user management
+**So that** I can monitor operations from anywhere.
+
+```gherkin
+Scenario: Admin dashboard KPIs
+  Given I am logged in as admin
+  When I open the Dashboard tab
+  Then I see today's admissions, discharges, bed occupancy %, and revenue
+
+Scenario: Bed board
+  Given I open the Beds tab
+  Then I see a colour-coded grid of all wards and bed statuses (free/occupied/cleaning)
+
+Scenario: User role management
+  Given I open Staff > Users
+  Then I see a list of all staff with their assigned roles
+  When I tap a user and change their role from "nurse" to "pharmacist"
+  Then their role is updated in Supabase and they see pharmacist screens on next login
+```
+
+---
+
+### S-MOB-STAFF · Staff Mobile Screens · **P1** · 8 pts
+**As a** nurse, pharmacist, or lab technician
+**I want** mobile screens for my daily tasks
+**So that** I can complete workflows without a desktop.
+
+```gherkin
+Scenario: Nurse records vitals
+  Given I am a nurse on Ward B
+  When I open the Vitals tab and select a patient
+  Then I can enter BP, HR, SpO2, temperature, and pain score
+  When I tap Save
+  Then the observation is stored and visible on the IPD dashboard
+
+Scenario: Pharmacist dispenses Rx
+  Given I am a pharmacist
+  When I open the Dispense tab
+  Then I see pending medication_requests for my store
+  When I scan the barcode and confirm
+  Then the stock_movement is recorded and the Rx is marked dispensed
+
+Scenario: Lab tech processes sample
+  Given I am a lab technician
+  When I open the Lab tab
+  Then I see the pending worklist ordered by priority
+  When I tap a sample and enter results
+  Then the diagnostic_report is created and auto-dispatched to the patient
+```
+
+---
+
+### S-MOB-PATIENT-V2 · Patient App v2 · **P1** · 5 pts
+**As a** patient
+**I want** biometric login, teleconsult, prescriptions view, and appointment reminders
+**So that** the app is complete for daily use.
+
+```gherkin
+Scenario: Biometric lock with Face ID / fingerprint
+  Given I have enabled biometric lock in Settings
+  When I reopen the app after 5 minutes of inactivity
+  Then I am prompted for Face ID or fingerprint (expo-local-authentication)
+  When authentication succeeds
+  Then I am taken to my last screen
+
+Scenario: View prescriptions
+  Given I open the Prescriptions tab
+  Then I see all my active medication_requests with drug name, dose, and prescribing doctor
+  When I tap a prescription
+  Then I can download it as a signed PDF
+
+Scenario: Join teleconsult
+  Given a doctor has started a teleconsult session for my appointment
+  When I receive a push notification "Your video consult is ready"
+  Then I tap Join and a video call screen opens within the app
+
+Scenario: Push notification for lab result
+  Given my lab report has been signed and dispatched
+  When the Edge Function fires the push event
+  Then I receive a push notification "Your CBC report is ready"
+  When I tap it
+  Then the app opens to the Reports tab showing the new report
+```
