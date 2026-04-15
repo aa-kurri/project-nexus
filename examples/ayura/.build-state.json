@@ -25,9 +25,10 @@
     "S-AUDIT-1",
     "S-APP-1",
     "S-BACKUP-1",
-    "S-OPD-2"
+    "S-OPD-2",
+    "S-APP-2"
   ],
   "skipped": [],
-  "last_run": "2026-04-15T03:00:54.465Z",
-  "last_slug": "S-OPD-2"
+  "last_run": "2026-04-15T03:06:47.874Z",
+  "last_slug": "S-APP-2"
 }
