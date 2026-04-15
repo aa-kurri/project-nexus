@@ -32,7 +32,12 @@ interface NavItem {
 const NAV: NavItem[] = [
   { label: "OPD Queue",   href: "/opd/queue",        icon: Activity,
     children: [{ label: "New Patient", href: "/opd/new-patient" }] },
-  { label: "IPD Beds",    href: "/ipd/beds",          icon: BedDouble },
+  { label: "IPD",          href: "/ipd/beds",           icon: BedDouble,
+    children: [
+      { label: "Bed Board",      href: "/ipd/beds" },
+      { label: "Dashboard",      href: "/ipd/dashboard" },
+      { label: "Nurse Station",  href: "/ipd/nurse-station" },
+    ]},
   { label: "Patients",    href: "/emr/patients",      icon: Users },
   { label: "Pharmacy",    href: "/pharmacy/stock",    icon: Pill,
     children: [
@@ -44,12 +49,17 @@ const NAV: NavItem[] = [
     children: [{ label: "HL7 Feed", href: "/lims/hl7" }] },
   { label: "Billing",     href: "/billing/claims",    icon: Receipt,
     children: [{ label: "Claims",   href: "/billing/claims" }] },
-  { label: "Analytics",   href: "/analytics/pharmacy", icon: TrendingUp },
+  { label: "Analytics",   href: "/analytics/pharmacy", icon: TrendingUp,
+    children: [
+      { label: "Pharmacy",  href: "/analytics/pharmacy" },
+      { label: "MIS Report", href: "/analytics/mis" },
+    ]},
   { label: "AI Scribe",   href: "/ai/scribe",         icon: Mic2 },
   { label: "Settings",    href: "/settings",          icon: Settings,
     children: [
       { label: "Concierge",   href: "/settings/concierge" },
       { label: "Audit Log",   href: "/settings/audit" },
+      { label: "Security",    href: "/settings/security" },
     ]},
 ];
 

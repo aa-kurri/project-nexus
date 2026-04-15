@@ -85,6 +85,34 @@
 | 3 | P1 | Biometric lock (patient app) | `S-APP-3` |
 | 5 | P1 | Document vault with signed URLs | `S-EMR-3` |
 
+## Sprint 8 · 2026-07-27 → 2026-08-09 · **26 pts**
+**Goal:** Clinical parity — IP Dashboard, Nurse Station, Discharge Summary.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 5 | P0 | IP Admissions Dashboard (KPIs + occupancy) | `S-IPD-2` |
+| 8 | P1 | Nurse Station — vitals charting & task board | `S-IPD-3` |
+| 8 | P1 | LLM-assisted Discharge Summary generator | `S-EMR-4` |
+| 5 | P1 | MIS Reports (census, revenue, procedure counts) | `S-REPORT-1` |
+
+## Sprint 9 · 2026-08-10 → 2026-08-23 · **21 pts**
+**Goal:** SaaS product layer — public site, pricing, super-admin.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 5 | P0 | Marketing landing site (replaces blank home page) | `S-SAAS-1` |
+| 3 | P1 | Pricing page + self-serve hospital signup | `S-SAAS-2` |
+| 8 | P1 | Super-admin portal — manage all hospital tenants | `S-SAAS-3` |
+| 5 | P0 | WebAuthn / FIDO2 hardware key pairing | `S-AUTH-HWKEY` |
+
+## Sprint 10 · 2026-08-24 → 2026-09-06 · **10 pts**
+**Goal:** SaaS monetisation — metering & white-label.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 5 | P1 | Per-tenant usage metering (AI tokens, storage, API calls) | `S-SAAS-4` |
+| 5 | P1 | White-label — custom domain + logo per tenant | `S-SAAS-5` |
+
 ---
 
 ## Roadmap (Mermaid Gantt)

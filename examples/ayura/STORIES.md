@@ -129,7 +129,22 @@ Scenario: Queue updates without refresh
     And the remaining ETAs are recalculated
 ```
 
-### S-OPD-2 · Tele-consultation with in-call Rx · **P1** · 13 pts
+### S-OPD-2 · Slot self-booking (patient app) · **P1** · 5 pts
+**As a** patient
+**I want** to pick a doctor and time slot from the mobile app
+**So that** I don't have to call the reception.
+
+```gherkin
+Scenario: Patient books a slot
+  Given I open the Appointments tab in the Ayura Patient app
+  When I select Dr. Rao and tap "Mon 10:30 AM"
+    And I confirm the booking
+  Then an appointment row is created in the DB linked to my patient_id
+    And I receive a WhatsApp / SMS confirmation with the booking details
+    And the slot is no longer visible to other patients
+```
+
+### S-OPD-3 · Tele-consultation with in-call Rx · **P1** · 13 pts
 **As a** doctor
 **I want** to write a prescription without leaving the video call
 **So that** I can ship a Rx before the call ends.
@@ -143,6 +158,24 @@ Scenario: Rx issued mid-call
   Then a PDF Rx is generated and pushed to the patient's app
     And an SMS fallback link is sent
     And the Rx is linked to this encounter
+```
+
+---
+
+## Epic: E3b · Wearables & Remote Monitoring
+
+### S-WEARABLE-1 · Wearable Data Ingest (Apple/Google) · **P1** · 8 pts
+**As a** doctor managing a chronic patient
+**I want** step count, heart rate, and SpO2 data from the patient's wearable
+**So that** I can see trends between clinic visits.
+
+```gherkin
+Scenario: Apple Health data is ingested
+  Given a patient has connected Apple Health in the Ayura Patient app
+  When they complete a walk session
+  Then their step count and heart rate are synced to the observations table
+    And are visible in the patient timeline under "Wearables"
+    And any SpO2 below 94% triggers an alert to the assigned doctor
 ```
 
 ---
@@ -328,6 +361,47 @@ Scenario: App requires biometric
 
 ---
 
+## Epic: E6b · LIMS QC & Backups
+
+### S-LIMS-5 · Levey–Jennings QC Chart · **P1** · 5 pts
+**As a** lab quality manager
+**I want** to see a Levey–Jennings chart for each analyte
+**So that** I can spot systematic drift before patient results are affected.
+
+```gherkin
+Scenario: QC chart flags a run
+  Given QC material for "Glucose" was run 20 times over the past 10 days
+  When I open the QC chart for Glucose on Analyser-1
+  Then the L-J chart plots each QC value against +2SD/-2SD and +3SD/-3SD lines
+    And any point outside ±2SD is marked orange
+    And any point outside ±3SD is marked red and prevents result release
+```
+
+---
+
+## Epic: E6c · Backup & Disaster Recovery
+
+### S-BACKUP-1 · Nightly backup + quarterly restore drill · **P0** · 5 pts
+**As a** hospital IT administrator
+**I want** an automated nightly database backup with quarterly restore verification
+**So that** patient data can be recovered from any failure within the RPO/RTO targets.
+
+```gherkin
+Scenario: Nightly backup succeeds
+  Given the GitHub Actions workflow runs at 02:00 UTC
+  When pg_dump completes via the Supabase DB URL
+  Then the encrypted backup is uploaded to the S3-compatible bucket
+    And a Slack/webhook notification confirms size and checksum
+
+Scenario: Quarterly restore drill passes
+  Given the last backup is downloaded to a test Postgres instance
+  When the restore script runs
+  Then all core tables (patients, encounters, audit_logs) exist with expected row counts
+    And a summary report is committed to the repo as docs/restore-drill-YYYY-MM-DD.md
+```
+
+---
+
 ## Epic: E9 · Advanced Analytics Dashboards
 
 ### S-ANALYTICS-1 · Pharmacy & GST Analytics Dashboard · **P0** · 6 pts
@@ -384,6 +458,151 @@ Scenario: Scribe drafts note from audio stream
   Then the AI Orchestrator processes the transcript
     And within 5 seconds, a structured SOAP note is populated
     And I can edit and sign it directly
+```
+
+---
+
+## Epic: E4b · IPD Dashboard & Nursing
+
+### S-IPD-2 · IP Admissions Dashboard (KPIs) · **P0** · 5 pts
+**As a** hospital administrator
+**I want** a real-time IP Dashboard showing admissions, discharges, bed occupancy, and average length of stay
+**So that** I can monitor hospital capacity at a glance.
+
+```gherkin
+Scenario: Dashboard reflects live census
+  Given 42 beds are occupied out of 60
+  When I open the IP Dashboard
+  Then I see: Admissions today (8), Discharges today (5), Bed Occupancy Rate (70%), Avg LOS (3.2 days)
+    And each KPI card updates within 2 seconds via Supabase Realtime
+    And a ward-wise breakdown table shows occupancy per ward
+```
+
+### S-IPD-3 · Nurse Station — vitals charting & task board · **P1** · 8 pts
+**As a** ward nurse
+**I want** to record patient vitals and manage nursing tasks from a single screen
+**So that** I don't context-switch between paper and software.
+
+```gherkin
+Scenario: Vitals recorded and trending
+  Given patient P-5512 is admitted in Bed W2-08
+  When I enter BP=130/85, Pulse=88, Temp=37.4, SpO2=97
+  Then the vitals are saved to the observations table
+    And a sparkline chart shows the last 24h trend inline
+    And any value outside reference range is highlighted red
+
+Scenario: Nursing task completed
+  Given a "Change IV line" task is assigned to P-5512 at 08:00
+  When I tap "Done" on the task
+  Then the task is marked complete with my user_id + timestamp
+    And the task disappears from the active queue
+```
+
+---
+
+## Epic: E2b · Discharge & MIS
+
+### S-EMR-4 · LLM-assisted Discharge Summary · **P1** · 8 pts
+**As a** doctor
+**I want** the AI to draft a discharge summary from the encounter notes, labs, and medications
+**So that** I spend 2 minutes reviewing instead of 20 minutes typing.
+
+```gherkin
+Scenario: Draft is generated from chart
+  Given patient P-5512 has a completed admission with 3 encounter notes, 2 lab reports, 1 Rx
+  When I click "Generate Discharge Summary"
+  Then within 10 seconds the AI populates: Diagnosis, Treatment Given, Lab Highlights, Discharge Medications, Follow-up Instructions
+    And I can edit each section inline before signing
+    And the signed PDF is stored in the document vault and linked to the admission
+```
+
+### S-REPORT-1 · MIS Reports — daily census + revenue · **P1** · 5 pts
+**As a** hospital administrator
+**I want** a Management Information System report screen with daily census, revenue, and procedure counts
+**So that** I can share operational data with the board.
+
+```gherkin
+Scenario: Daily census report renders
+  Given today is 2026-08-01
+  When I open MIS Reports → Daily Census
+  Then I see: New Admissions, Discharges, OPD visits, Lab tests performed, Revenue collected — all for the selected date
+    And I can export the report as a CSV or PDF
+    And data is always scoped to my tenant_id
+```
+
+---
+
+## Epic: E13 · SaaS Product Layer
+
+### S-SAAS-1 · Marketing landing site · **P0** · 5 pts
+**As a** hospital decision-maker
+**I want** to land on a compelling public homepage for Ayura OS
+**So that** I understand the product's value and can request a demo.
+
+```gherkin
+Scenario: Visitor converts to demo request
+  Given I land on ayura.health (the root "/" route)
+  When I scroll through Hero, Features, Modules grid, Testimonials, and Pricing teaser sections
+    And I click "Request Demo"
+  Then a lead capture form appears with: name, hospital, phone, email
+    And on submit, the lead is saved and I see a "We'll be in touch within 24h" confirmation
+```
+
+### S-SAAS-2 · Pricing page + self-serve signup · **P1** · 3 pts
+**As a** small clinic owner
+**I want** to see pricing tiers and sign up without a sales call
+**So that** I can start a 14-day trial immediately.
+
+```gherkin
+Scenario: Self-serve trial signup
+  Given I am on /pricing
+  When I select the "Clinic" plan and click "Start free trial"
+    And I fill in hospital name, subdomain, admin email, password
+  Then a new tenant is provisioned with the Clinic module set
+    And I receive a welcome email with my login link
+    And my trial expires after 14 days unless a payment method is added
+```
+
+### S-SAAS-3 · Super-admin portal — tenant management · **P1** · 8 pts
+**As an** Ayura OS platform admin
+**I want** a private super-admin portal to view and manage all hospital tenants
+**So that** I can support customers and enforce platform policies.
+
+```gherkin
+Scenario: Super-admin views all tenants
+  Given I log in to /super-admin with a platform_admin role
+  When I open the Tenants list
+  Then I see each tenant: name, plan, modules enabled, user count, last activity, trial/paid status
+    And I can click into any tenant to impersonate their admin (read-only)
+    And I can suspend or delete a tenant with an audit log entry
+```
+
+### S-SAAS-4 · Per-tenant usage metering · **P1** · 5 pts
+**As an** Ayura OS platform admin
+**I want** to track AI token consumption, storage usage, and API call counts per tenant per month
+**So that** I can enforce plan limits and generate invoices.
+
+```gherkin
+Scenario: Usage is tracked per AI call
+  Given tenant T-1 calls the Clinical Copilot endpoint
+  When the response is returned
+  Then a usage_events row is appended: tenant_id, event_type="ai_token", quantity=850, month="2026-08"
+    And the tenant's monthly usage dashboard shows cumulative totals
+    And when the tenant exceeds 80% of their plan limit, an automated warning email is sent
+```
+
+### S-SAAS-5 · White-label — custom domain + logo per tenant · **P1** · 5 pts
+**As a** hospital administrator
+**I want** my staff to access the system at emr.cityhospital.com with our logo
+**So that** the product feels native to our brand.
+
+```gherkin
+Scenario: Custom domain resolves to tenant
+  Given tenant "City Hospital" has configured CNAME emr.cityhospital.com → app.ayura.health
+  When a staff member visits emr.cityhospital.com
+  Then the app loads with City Hospital's logo, primary color, and favicon
+    And the page title reads "City Hospital — powered by Ayura OS"
+    And the Ayura branding is replaced by the tenant's brand (unless they are on Starter plan)
 ```
 
 ---
