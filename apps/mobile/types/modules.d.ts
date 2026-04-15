@@ -3,6 +3,10 @@
  * Run: pnpm add expo-file-system @react-native-community/netinfo
  */
 
+// Expo's Metro bundler replaces process.env.EXPO_PUBLIC_* at bundle time.
+// Declare the global so TypeScript is satisfied without pulling in @types/node.
+declare const process: { env: { [key: string]: string | undefined } };
+
 declare module "expo-file-system" {
   /** Writable, persistent app document directory (null only in rare test envs). */
   export const documentDirectory: string | null;
