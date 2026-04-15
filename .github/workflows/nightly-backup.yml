@@ -1,0 +1,122 @@
+name: Ayura OS — Nightly Database Backup
+
+# S-BACKUP-1: Runs at 02:00 UTC every night.
+# Uploads a pg_dump (custom format, compressed) to an S3-compatible bucket
+# via rclone. On the last day of each quarter it also copies the snapshot
+# to a separate /quarterly/ prefix for restore-drill targeting.
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC daily
+  workflow_dispatch:
+    inputs:
+      retain_days:
+        description: "Override backup retention (days, default 90)"
+        required: false
+        default: "90"
+      run_restore_drill:
+        description: "Run restore drill after backup"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ayura-nightly-backup
+  cancel-in-progress: false
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  backup:
+    name: pg_dump → rclone → S3
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SUPABASE_DB_URL:    ${{ secrets.SUPABASE_DB_URL }}
+      RCLONE_REMOTE:      ${{ secrets.RCLONE_REMOTE }}
+      SLACK_WEBHOOK_URL:  ${{ secrets.SLACK_WEBHOOK_URL }}
+      BACKUP_RETAIN_DAYS: ${{ github.event.inputs.retain_days || '90' }}
+
+    steps:
+      # ── Checkout (needed to run scripts/) ──────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      # ── PostgreSQL client (pg_dump) ────────────────────────────────────────
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      # ── rclone ────────────────────────────────────────────────────────────
+      - name: Install rclone
+        run: |
+          curl -fsSL https://rclone.org/install.sh | sudo bash
+
+      # ── Write rclone config from secret ────────────────────────────────────
+      # RCLONE_CONFIG secret should contain the full contents of rclone.conf,
+      # e.g. for Cloudflare R2 / AWS S3 / Backblaze B2.
+      # See: https://rclone.org/docs/#config-file
+      - name: Configure rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      # ── Make backup script executable ─────────────────────────────────────
+      - name: Prepare scripts
+        run: chmod +x scripts/backup.sh scripts/restore-drill.sh
+
+      # ── Run backup ─────────────────────────────────────────────────────────
+      - name: Run nightly backup
+        run: scripts/backup.sh
+
+  # ────────────────────────────────────────────────────────────────────────────
+  restore-drill:
+    name: Quarterly restore drill
+    needs: backup
+    # Run when:
+    #  (a) manually triggered with run_restore_drill=true, OR
+    #  (b) it is the last day of a quarter (Mar-31, Jun-30, Sep-30, Dec-31)
+    if: |
+      github.event.inputs.run_restore_drill == 'true' ||
+      (
+        (format('{0}-{1}', fromJson(toJson(github.run_started_at))['month'], fromJson(toJson(github.run_started_at))['day']) == '3-31') ||
+        (format('{0}-{1}', fromJson(toJson(github.run_started_at))['month'], fromJson(toJson(github.run_started_at))['day']) == '6-30') ||
+        (format('{0}-{1}', fromJson(toJson(github.run_started_at))['month'], fromJson(toJson(github.run_started_at))['day']) == '9-30') ||
+        (format('{0}-{1}', fromJson(toJson(github.run_started_at))['month'], fromJson(toJson(github.run_started_at))['day']) == '12-31')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      RCLONE_REMOTE:     ${{ secrets.RCLONE_REMOTE }}
+      DRILL_DB_URL:      ${{ secrets.DRILL_DB_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Install rclone
+        run: |
+          curl -fsSL https://rclone.org/install.sh | sudo bash
+
+      - name: Configure rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: Prepare scripts
+        run: chmod +x scripts/restore-drill.sh
+
+      - name: Run restore drill
+        run: scripts/restore-drill.sh
