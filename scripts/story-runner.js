@@ -24,7 +24,6 @@ const AYURA = path.join(ROOT, "examples", "ayura");
 const STATE_FILE   = path.join(AYURA, ".build-state.json");
 const SPRINTS_FILE = path.join(AYURA, "SPRINTS.md");
 const STORIES_FILE = path.join(AYURA, "STORIES.md");
-const WEB_APP      = path.join(ROOT, "apps", "web");
 
 // ---------------------------------------------------------------------------
 // 1. State management
@@ -80,31 +79,9 @@ function extractStory(slug) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Snapshot relevant existing file tree for context injection
-// ---------------------------------------------------------------------------
-function fileTree(dir, depth = 2, prefix = "") {
-  if (!fs.existsSync(dir)) return "";
-  const entries = fs.readdirSync(dir, { withFileTypes: true })
-    .filter(e => !["node_modules", ".next", ".git", "public"].includes(e.name));
-  return entries.map((e, i) => {
-    const isLast = i === entries.length - 1;
-    const branch = prefix + (isLast ? "└── " : "├── ");
-    const child  = prefix + (isLast ? "    " : "│   ");
-    const line   = branch + e.name;
-    if (e.isDirectory() && depth > 1) {
-      return line + "\n" + fileTree(path.join(dir, e.name), depth - 1, child);
-    }
-    return line;
-  }).join("\n");
-}
-
-// ---------------------------------------------------------------------------
-// 5. Build a rich, targeted Claude Code prompt for a story
+// 4. Build a concise, targeted Claude Code prompt for a story
 // ---------------------------------------------------------------------------
 function buildPrompt(story) {
-  const appTree = fileTree(path.join(WEB_APP, "app"), 3);
-  const compTree = fileTree(path.join(WEB_APP, "components"), 2);
-  const migTree = fileTree(path.join(AYURA, "supabase", "migrations"), 1);
 
   // Module → component hints
   const hints = {
@@ -144,69 +121,41 @@ function buildPrompt(story) {
 
   const fileHint = hints[story.slug] ?? `Create the required Next.js page, React components, and any Supabase migrations for ${story.slug}.`;
 
-  return `# Role
-You are a senior full-stack engineer building Ayura OS — an AI-native hospital operating system (Next.js 14 App Router + Supabase + Expo).
+  return `Ayura OS — Next.js 14 App Router + Supabase + Expo. Implement ${story.slug}: ${story.title}.
 
-# Story to implement: ${story.slug} — ${story.title} (${story.priority}, ${story.pts})
-
-## Full Gherkin specification
+GHERKIN:
 ${story.body}
 
-## Implementation instructions
+FILES TO CREATE:
 ${fileHint}
 
-## Design system rules (mandatory)
-- Primary colour: #0F766E (teal). Dark bg: hsl(220 15% 6%). Surface: hsl(220 13% 9%).
-- Use existing primitives: components/ui/card, button, badge, input, scroll-area.
-- Hospital shell: wrap pages with TopBar from components/hospital/TopBar.tsx.
-- Server actions go in the same folder as the page, named actions.ts.
-- Every Supabase table MUST have tenant_id + RLS policy using public.jwt_tenant().
-- New migrations go in examples/ayura/supabase/migrations/ with timestamp prefix YYYYMMDDHHMMSS_.
+RULES (non-negotiable):
+- Colors: primary #0F766E, bg hsl(220 15% 6%), surface hsl(220 13% 9%)
+- Reuse: components/ui/{card,button,badge,input,scroll-area}, hospital/TopBar
+- Server actions: actions.ts in same folder, stub with TODO comments
+- DB tables: tenant_id NOT NULL + RLS policy via public.jwt_tenant()
+- Migrations: examples/ayura/supabase/migrations/YYYYMMDDHHMMSS_name.sql
+- Existing FHIR tables: patients, encounters, observations, conditions, allergies, medication_requests, service_requests, lab_samples, diagnostic_reports, queue_tokens, beds, admissions, stock_stores, stock_items, stock_batches, stock_movements, bills, bill_items
+- No tests, no README, no storybook
 
-## Current file tree — apps/web/app/
-\`\`\`
-${appTree}
-\`\`\`
-
-## Current file tree — apps/web/components/
-\`\`\`
-${compTree}
-\`\`\`
-
-## Existing migrations
-\`\`\`
-${migTree}
-\`\`\`
-
-## Key FHIR tables already in DB (from migration 20260414120000_fhir_abdm_core.sql)
-patients, encounters, observations, conditions, allergies, medication_requests,
-service_requests, lab_samples, diagnostic_reports, queue_tokens, beds, admissions,
-stock_stores, stock_items, stock_batches, stock_movements, bills, bill_items.
-
-## Completion criteria
-- All Gherkin scenarios described above are handled by the UI / API.
-- New components use mock/static data where Supabase isn't wired; server actions are stubbed with clear TODO comments matching the pattern in app/(hospital)/opd/new-patient/actions.ts.
-- No TypeScript errors in files you touch (run tsc --noEmit on apps/web if tsc is available).
-- Do NOT modify existing working components unless the story explicitly requires it.
-- Do NOT add tests, README files, or storybook stories.
-
-Implement ${story.slug} now. Create every file needed. Do not stop until the feature is complete.`;
+Implement now. Create every file. Do not stop until complete.`;
 }
 
 // ---------------------------------------------------------------------------
 // 6. Run Claude Code CLI non-interactively
+//    P0 stories → sonnet (default), P1 stories → haiku (faster + cheaper)
 // ---------------------------------------------------------------------------
-function runClaude(prompt) {
+function runClaude(prompt, priority = "P0") {
   return new Promise((resolve, reject) => {
-    // Write prompt to a temp file to avoid shell-escaping issues
-    const tmpFile = path.join(ROOT, ".claude-prompt.tmp");
-    fs.writeFileSync(tmpFile, prompt, "utf8");
+    const model = priority === "P0"
+      ? "claude-sonnet-4-6"
+      : "claude-haiku-4-5-20251001";
 
-    console.log("  Spawning: claude --dangerously-skip-permissions -p <prompt>");
+    console.log(`  Spawning: claude --model ${model} --dangerously-skip-permissions -p <prompt>`);
 
     const proc = spawn(
       "claude",
-      ["--dangerously-skip-permissions", "-p", prompt],
+      ["--model", model, "--dangerously-skip-permissions", "-p", prompt],
       {
         cwd: ROOT,
         stdio: ["ignore", "inherit", "inherit"],
@@ -215,7 +164,6 @@ function runClaude(prompt) {
     );
 
     proc.on("error", (err) => {
-      fs.rmSync(tmpFile, { force: true });
       if (err.code === "ENOENT") {
         reject(new Error("CLAUDE_NOT_FOUND: install @anthropic-ai/claude-code globally"));
       } else {
@@ -224,7 +172,6 @@ function runClaude(prompt) {
     });
 
     proc.on("close", (code) => {
-      fs.rmSync(tmpFile, { force: true });
       if (code === 0) resolve();
       else reject(new Error(`CLAUDE_EXIT_${code}`));
     });
@@ -312,7 +259,7 @@ async function main() {
   let attempt = 0;
   while (attempt <= MAX_RETRIES) {
     try {
-      await runClaude(buildPrompt(story));
+      await runClaude(buildPrompt(story), story.priority);
       break;
     } catch (err) {
       attempt++;
