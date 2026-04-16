@@ -45,9 +45,10 @@
     "S-MOB-RBAC",
     "S-MOB-DOCTOR",
     "S-MOB-ADMIN",
-    "S-MOB-STAFF"
+    "S-MOB-STAFF",
+    "S-MOB-PATIENT-V2"
   ],
   "skipped": [],
-  "last_run": "2026-04-16T01:50:05.924Z",
-  "last_slug": "S-MOB-STAFF"
+  "last_run": "2026-04-16T01:50:26.557Z",
+  "last_slug": "S-MOB-PATIENT-V2"
 }
