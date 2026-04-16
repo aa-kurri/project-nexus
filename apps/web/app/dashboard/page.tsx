@@ -4,6 +4,7 @@ import { UrlLauncher } from "@/components/dashboard/UrlLauncher";
 import { PipelineStatus } from "@/components/dashboard/PipelineStatus";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,7 @@ export default async function Dashboard() {
           <h1 className="font-display text-4xl tracking-tight">Dashboard</h1>
           <p className="mt-2 text-muted">Paste a URL. Nexus does the rest.</p>
         </div>
+        <LogoutButton variant="outline" className="border-border hover:bg-red-500/10 hover:text-red-400" />
       </header>
 
       <div className="mx-auto max-w-3xl">
