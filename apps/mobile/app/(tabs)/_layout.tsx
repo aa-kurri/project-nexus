@@ -206,6 +206,7 @@ export default function TabLayout() {
       {/* ── sub-routes that must not appear as tabs ───────────────────────── */}
       <Tabs.Screen name="reports/[id]"          options={{ href: null }} />
       <Tabs.Screen name="appointments/booking"  options={{ href: null }} />
+      <Tabs.Screen name="patients/[id]"         options={{ href: null }} />
     </Tabs>
   );
 }

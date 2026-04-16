@@ -42,9 +42,10 @@
     "S-AUTH-HWKEY",
     "S-SAAS-4",
     "S-SAAS-5",
-    "S-MOB-RBAC"
+    "S-MOB-RBAC",
+    "S-MOB-DOCTOR"
   ],
   "skipped": [],
-  "last_run": "2026-04-16T01:33:28.723Z",
-  "last_slug": "S-MOB-RBAC"
+  "last_run": "2026-04-16T01:40:15.111Z",
+  "last_slug": "S-MOB-DOCTOR"
 }
