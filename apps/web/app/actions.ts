@@ -52,3 +52,15 @@ export async function requestDemo(payload: Pick<LeadPayload, "email" | "hospital
   console.log("[requestDemo] stub — payload received", payload);
   return { ok: true };
 }
+
+import { supabaseServer } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+
+/**
+ * handleLogout — sign out the user and redirect to login.
+ */
+export async function handleLogout() {
+  const supabase = supabaseServer();
+  await supabase.auth.signOut();
+  redirect("/auth/login");
+}

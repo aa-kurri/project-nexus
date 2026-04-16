@@ -18,9 +18,11 @@ import {
   MessageSquare,
   ShieldCheck,
   ChevronDown,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { handleLogout } from "@/app/actions";
 
 interface NavItem {
   label: string;
@@ -66,6 +68,13 @@ const NAV: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const onLogout = () => {
+    startTransition(async () => {
+      await handleLogout();
+    });
+  };
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-border bg-surface">
@@ -133,8 +142,20 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-border px-5 py-4">
-        <p className="text-[10px] uppercase tracking-widest text-muted">Demo Hospital</p>
-        <p className="mt-0.5 text-xs text-muted">Sprint 0–2 · 2026-04-14</p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-muted">Demo Hospital</p>
+            <p className="mt-0.5 text-xs text-muted">Sprint 0–2 · 2026-04-14</p>
+          </div>
+          <button
+            onClick={onLogout}
+            disabled={isPending}
+            className="rounded-lg p-2 text-muted hover:bg-red-500/10 hover:text-red-400 transition-colors disabled:opacity-50"
+            title="Log Out"
+          >
+            <LogOut className={cn("h-4 w-4", isPending && "animate-pulse")} />
+          </button>
+        </div>
       </div>
     </aside>
   );
