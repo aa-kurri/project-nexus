@@ -49,9 +49,10 @@
     "S-MOB-PATIENT-V2",
     "S-AI-SCRIBE-LIVE",
     "S-AI-COPILOT-RAG",
-    "S-AUTH-FLOW"
+    "S-AUTH-FLOW",
+    "S-IPD-NURSE"
   ],
   "skipped": [],
-  "last_run": "2026-04-16T12:57:56.172Z",
-  "last_slug": "S-AUTH-FLOW"
+  "last_run": "2026-04-16T13:01:32.883Z",
+  "last_slug": "S-IPD-NURSE"
 }
