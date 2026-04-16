@@ -3,11 +3,20 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { UrlLauncher } from "@/components/dashboard/UrlLauncher";
 import { PipelineStatus } from "@/components/dashboard/PipelineStatus";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const sb = supabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+
+  // Redirect based on user metadata
+  if (user?.user_metadata?.role === "staff" || user?.user_metadata?.role === "admin") {
+    // If it's a hospital user, send them to the clinical workspace
+    redirect("/opd/queue");
+  }
+
   const { data: projects } = await sb
     .from("projects")
     .select("id, name, source_url, status, created_at")
