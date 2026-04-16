@@ -52,7 +52,9 @@
     "S-AUTH-FLOW",
     "S-IPD-NURSE"
   ],
-  "skipped": [],
-  "last_run": "2026-04-16T13:01:32.883Z",
+  "skipped": [
+    "S-REPORT-MIS"
+  ],
+  "last_run": "2026-04-16T13:02:36.677Z",
   "last_slug": "S-IPD-NURSE"
 }
