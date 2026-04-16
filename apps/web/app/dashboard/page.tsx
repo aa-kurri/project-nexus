@@ -11,10 +11,27 @@ export default async function Dashboard() {
   const sb = supabaseServer();
   const { data: { user } } = await sb.auth.getUser();
 
-  // Redirect based on user metadata
-  if (user?.user_metadata?.role === "staff" || user?.user_metadata?.role === "admin") {
-    // If it's a hospital user, send them to the clinical workspace
-    redirect("/opd/queue");
+  // Redirect based on user metadata OR demo email patterns
+  if (user) {
+    const role = user.user_metadata?.role;
+    const email = user.email || "";
+
+    // 1. Hospital Staff / Admin Redirect
+    if (
+      role === "staff" ||
+      role === "admin" ||
+      email.endsWith("@citygeneral.demo") && !email.includes("patient.")
+    ) {
+      redirect("/opd/queue");
+    }
+
+    // 2. Patient Portal Redirect
+    if (
+      role === "patient" ||
+      email.includes("patient.") && email.endsWith("@citygeneral.demo")
+    ) {
+      redirect("/account/security"); // Or a patient home if it exists
+    }
   }
 
   const { data: projects } = await sb
