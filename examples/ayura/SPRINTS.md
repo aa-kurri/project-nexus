@@ -166,3 +166,37 @@ gantt
   Tele-consult              :2026-07-13, 14d
   Vault & Biometrics        :2026-07-13, 14d
 ```
+
+---
+
+## Sprint 12 · 2026-09-21 → 2026-10-04 · **21 pts**
+**Goal:** Production Wiring — Real AI & WebAuthn.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 13 | P1 | Real AI Implementations (Scribe/Concierge) | `S-AI-REAL` |
+| 8 | P1 | WebAuthn and Biometrics Live | `S-AUTH-WEBAUTHN-LIVE` |
+
+## Sprint 13 · 2026-10-05 → 2026-10-18 · **26 pts**
+**Goal:** OT + Radiology modules.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 13 | P2 | Operation Theatre Scheduling | `S-OT-1` |
+| 13 | P2 | Radiology Worklist & DICOM | `S-RAD-1` |
+
+## Sprint 14 · 2026-10-19 → 2026-11-01 · **21 pts**
+**Goal:** Go-to-Market — Subscriptions & Deletion.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 8 | P1 | Stripe Automated Billing Loop | `S-SAAS-6` |
+| 13 | P2 | Tenant Offboarding & DISHA | `S-SAAS-7` |
+
+## Sprint 15 · 2026-11-02 → 2026-11-15 · **21 pts**
+**Goal:** Final Compliance & Infrastructure.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 13 | P1 | CI/CD, Error Tracking & Load Testing | `S-INFRA-1` |
+| 8 | P1 | ABDM Verification Prep | `S-COMPLIANCE-1` |

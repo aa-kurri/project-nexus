@@ -99,7 +99,7 @@ export default function BiometricLockScreen({
   const [pending, startTx]      = useTransition();
   const [bioActive, setBioActive] = useState(false);
 
-  const clearTimeout_ = useRef<ReturnType<typeof setTimeout>>(null);
+  const clearTimeout_ = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-trigger biometric prompt on mount when in biometric mode
   useEffect(() => {

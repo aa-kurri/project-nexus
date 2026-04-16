@@ -29,65 +29,66 @@ export interface RegistrationOptions {
 // Issues a fresh FIDO2 challenge for navigator.credentials.create().
 // Challenge must be stored server-side (Redis/DB) and verified within 2 minutes.
 
+import { 
+  generateRegistrationOptions, 
+  verifyRegistrationResponse,
+  verifiedRegistrationResponse 
+} from "@simplewebauthn/server";
+import { redis, storeChallenge, getAndClearChallenge } from "@/lib/redis";
+import { createClient } from "@/utils/supabase/server";
+
+const RP_ID = process.env.NEXT_PUBLIC_SITE_DOMAIN || "localhost";
+const RP_NAME = "Ayura OS";
+
 export async function getRegistrationOptions(
   staffId: string,
-): Promise<{ ok: boolean; options?: RegistrationOptions; error?: string }> {
+): Promise<{ ok: boolean; options?: any; error?: string }> {
   if (!staffId) return { ok: false, error: "staffId is required" };
 
-  // TODO: replace stub with full server-side implementation
-  // 1. const { data: profile } = await supabase
-  //      .from("profiles")
-  //      .select("id, full_name, email")
-  //      .eq("id", staffId)
-  //      .single()
-  // 2. const challenge = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url")
-  // 3. await redis.set(`webauthn:reg:challenge:${staffId}`, challenge, { ex: 120 })
-  // 4. const { data: existing } = await supabase
-  //      .from("webauthn_credentials")
-  //      .select("credential_id")
-  //      .eq("staff_id", staffId)
-  // 5. return { ok: true, options: {
-  //      challenge,
-  //      rpId:    new URL(process.env.NEXT_PUBLIC_SITE_URL!).hostname,
-  //      rpName:  "Ayura OS",
-  //      userId:  Buffer.from(staffId).toString("base64url"),
-  //      userName: profile.email,
-  //      userDisplayName: profile.full_name,
-  //      excludeCredentialIds: existing.map(c => c.credential_id),
-  //      timeout: 60_000,
-  //    }}
+  const supabase = createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("id", staffId)
+    .single();
+
+  if (!profile) return { ok: false, error: "Profile not found" };
+
+  const { data: existingKeys } = await supabase
+    .from("webauthn_credentials")
+    .select("credential_id")
+    .eq("staff_id", staffId);
+
+  const options = await generateRegistrationOptions({
+    rpName: RP_NAME,
+    rpID:   RP_ID,
+    userID: staffId,
+    userName: profile.full_name,
+    userDisplayName: profile.full_name,
+    attestationType: "none",
+    excludeCredentials: (existingKeys || []).map(k => ({
+      id: Buffer.from(k.credential_id, 'base64url'),
+      type: "public-key",
+    })),
+    authenticatorSelection: {
+      userVerification: "preferred",
+      residentKey: "preferred",
+    },
+  });
+
+  // Store challenge in Redis
+  await storeChallenge(staffId, options.challenge);
 
   return {
     ok: true,
-    options: {
-      challenge:            "STUB_CHALLENGE_REPLACE_WITH_CRYPTO_RANDOM_32_BYTES",
-      rpId:                 "localhost",
-      rpName:               "Ayura OS",
-      userId:               Buffer.from(staffId).toString("base64url"),
-      userName:             "doctor@ayura.health",
-      userDisplayName:      "Dr. Staff Member",
-      excludeCredentialIds: [],
-      timeout:              60_000,
-    },
+    options,
   };
 }
 
-// ── registerStaffCredential ───────────────────────────────────────────────────
-// Persists a verified FIDO2 credential. Full server-side verification via
-// @simplewebauthn/server must replace the stub before production.
-
 const RegisterSchema = z.object({
   staffId:       z.string().uuid(),
-  credentialId:  z.string().min(1).max(512),
-  publicKeyCbor: z.string().min(1),
-  counter:       z.number().int().nonneg(),
+  registrationResponse: z.any(), // The full response from the browser
   deviceName:    z.string().max(120).optional(),
-  aaguid:        z.string().optional(),
-  transports:    z.array(z.string()).optional(),
-  backedUp:      z.boolean().optional(),
-  // Raw authenticator response for server-side verification
-  attestationObject: z.string().optional(),
-  clientDataJSON:    z.string().optional(),
 });
 
 export async function registerStaffCredential(
@@ -98,50 +99,39 @@ export async function registerStaffCredential(
     return { ok: false, error: parsed.error.issues[0]?.message };
   }
 
-  // TODO: replace stub with full @simplewebauthn/server verification
-  // 1. const expectedChallenge = await redis.getdel(`webauthn:reg:challenge:${parsed.data.staffId}`)
-  //    if (!expectedChallenge) return { ok: false, error: "Challenge expired or not found" }
-  // 2. const verification = await verifyRegistrationResponse({
-  //      response: {
-  //        id:       parsed.data.credentialId,
-  //        rawId:    parsed.data.credentialId,
-  //        response: {
-  //          attestationObject: parsed.data.attestationObject!,
-  //          clientDataJSON:    parsed.data.clientDataJSON!,
-  //        },
-  //        type: "public-key",
-  //      },
-  //      expectedChallenge,
-  //      expectedOrigin: process.env.NEXT_PUBLIC_SITE_URL!,
-  //      expectedRPID:   new URL(process.env.NEXT_PUBLIC_SITE_URL!).hostname,
-  //      requireUserVerification: true,
-  //    })
-  // 3. if (!verification.verified) return { ok: false, error: "WebAuthn verification failed" }
-  // 4. const { credentialID, credentialPublicKey, counter, aaguid, credentialBackedUp,
-  //            credentialDeviceType } = verification.registrationInfo!
-  // 5. await supabase.from("webauthn_credentials").insert({
-  //      tenant_id:       jwt_tenant(),
-  //      staff_id:        parsed.data.staffId,
-  //      credential_id:   base64url.encode(credentialID),
-  //      public_key_cbor: base64url.encode(credentialPublicKey),
-  //      counter,
-  //      device_name:     parsed.data.deviceName,
-  //      aaguid:          aaguid ? uuidify(aaguid) : null,
-  //      transports:      parsed.data.transports ?? [],
-  //      backed_up:       credentialBackedUp,
-  //    })
-  // 6. await supabase.from("staff_webauthn_events").insert({
-  //      tenant_id:     jwt_tenant(),
-  //      staff_id:      parsed.data.staffId,
-  //      credential_id: base64url.encode(credentialID),
-  //      event_type:    "register_success",
-  //      success:       true,
-  //      rp_id:         new URL(process.env.NEXT_PUBLIC_SITE_URL!).hostname,
-  //    })
-  // 7. Update profiles.fido2_public_key with latest key for quick auth checks
+  const expectedChallenge = await getAndClearChallenge(parsed.data.staffId);
+  if (!expectedChallenge) return { ok: false, error: "Challenge expired or invalid" };
 
-  await new Promise(r => setTimeout(r, 400));
-  return { ok: true };
+  try {
+    const verification = await verifyRegistrationResponse({
+      response: parsed.data.registrationResponse,
+      expectedChallenge,
+      expectedOrigin: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+      expectedRPID: RP_ID,
+    });
+
+    if (!verification.verified || !verification.registrationInfo) {
+      return { ok: false, error: "Verification failed" };
+    }
+
+    const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
+    const supabase = createClient();
+
+    const { error } = await supabase.from("webauthn_credentials").insert({
+      staff_id: parsed.data.staffId,
+      credential_id: Buffer.from(credentialID).toString("base64url"),
+      public_key_cbor: Buffer.from(credentialPublicKey).toString("base64url"),
+      counter,
+      device_name: parsed.data.deviceName || "Unknown Device",
+    });
+
+    if (error) throw error;
+
+    return { ok: true };
+  } catch (err: any) {
+    console.error("WebAuthn Verification Error:", err);
+    return { ok: false, error: err.message };
+  }
 }
 
 // ── getEnrolledKeys ───────────────────────────────────────────────────────────

@@ -9,21 +9,57 @@ const Schema = z.object({
   gender: z.enum(["male", "female", "other"]),
 });
 
+import { createClient } from "@/utils/supabase/server";
+
 export async function registerPatient(input: z.infer<typeof Schema>) {
   const parsed = Schema.safeParse(input);
   if (!parsed.success) {
     return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  // TODO: implement with real Supabase writes
-  // 1. Check for existing patient by phone (tenant-scoped)
-  //    const { data: existing } = await sb.from("patients").select("id").eq("phone", phone).maybeSingle()
-  // 2. If not found, insert new patient row
-  //    const { data: patient } = await sb.from("patients").insert({ tenant_id, phone, full_name: name, dob, gender, mrn: generateMRN() }).select().single()
-  // 3. Upsert a queue_token for today's OPD
-  //    await sb.from("queue_tokens").insert({ tenant_id, patient_id: patient.id, practitioner_id, token_number: nextToken() })
-  // 4. Append audit_log "patient.created"
+  const supabase = createClient();
+  
+  // 1. Get Tenant Context from session
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, error: "Unauthorized" };
 
-  await new Promise(r => setTimeout(r, 600));
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) return { ok: false as const, error: "Tenant not found" };
+
+  // 2. Insert Patient with generated MRN
+  const mrn = `MRN-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+  
+  const { data: patient, error: patientErr } = await supabase
+    .from("patients")
+    .insert([{
+      tenant_id: profile.tenant_id,
+      phone: parsed.data.phone,
+      full_name: parsed.data.name,
+      dob: parsed.data.dob,
+      gender: parsed.data.gender,
+      mrn: mrn,
+    }])
+    .select()
+    .single();
+
+  if (patientErr) {
+    if (patientErr.code === '23505') return { ok: false as const, error: "Patient already exists" };
+    return { ok: false as const, error: patientErr.message };
+  }
+
+  // 3. Create initial OPD token for today
+  await supabase.from("queue_tokens").insert([{
+    tenant_id: profile.tenant_id,
+    patient_id: patient.id,
+    token_number: Math.floor(Math.random() * 100) + 1,
+    token_date: new Date().toISOString().split('T')[0],
+    status: 'waiting'
+  }]);
+
   return { ok: true as const };
 }

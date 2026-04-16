@@ -767,3 +767,164 @@ Scenario: Push notification for lab result
   When I tap it
   Then the app opens to the Reports tab showing the new report
 ```
+
+---
+
+## Sprint 12: Wire Real Implementations (De-stubbing)
+
+### S-AI-REAL · Real AI Implementations · **P1** · 13 pts
+**As a** system maintainer
+**I want** to replace AI Scribe and logic stubs with real integrations
+**So that** features are fully functional.
+
+```gherkin
+Scenario: AI Scribe Speech-to-SOAP
+  Given a doctor records dictation during a consult
+  When the recording is complete
+  Then it is sent to the Whisper API for transcription
+  And the text is sent to Claude API to parse into a SOAP note format
+  Then the parsed structured SOAP note populates the patient encounter
+
+Scenario: WhatsApp Concierge interaction
+  Given a patient sends a WhatsApp message to the clinic number
+  When the Meta Business API webhook receives the payload
+  Then it is processed by the AI receptionist
+  And an appropriate response or booking link is sent back
+```
+
+### S-AUTH-WEBAUTHN-LIVE · WebAuthn and Biometrics Server Validation · **P1** · 8 pts
+**As a** security administrator
+**I want** real cryptographic verification for WebAuthn and biometric PIN overrides
+**So that** the application security is truly zero-trust.
+
+```gherkin
+Scenario: WebAuthn registration
+  Given a staff member registers a hardware key
+  When the client completes the WebAuthn challenge
+  Then it sends it to the server action
+  And the server verifies the response using @simplewebauthn/server and stores the CBOR public key
+
+Scenario: Server-side PIN verification
+  Given a user is locked by a biometric fallback PIN
+  When they enter their PIN
+  Then it is hashed and compared on the server (bcrypt/Argon2) before unlocking the session
+```
+
+---
+
+## Sprint 13: Advanced Clinical Modules (OT & Radiology)
+
+### S-OT-1 · Operation Theatre & Surgical Scheduling · **P2** · 13 pts
+**As a** surgical coordinator
+**I want** to schedule OT resources and surgical teams
+**So that** surgeries are coordinated safely and efficiently.
+
+```gherkin
+Scenario: Book OT room
+  Given I am an OT coordinator
+  When I select an OT and a time slot
+  And assign a surgeon, anesthetist, and patient
+  Then an OT booking record is created
+  And the patient's admission status reflects surgical status
+
+Scenario: Record OT Notes
+  Given a surgery is completed
+  When the surgeon enters operation notes in the OT module
+  Then the OT record is finalized
+  And it is appended to the patient's clinical history
+```
+
+### S-RAD-1 · Radiology Worklist & DICOM Integration · **P2** · 13 pts
+**As a** radiologist
+**I want** a dedicated imaging worklist and viewer access
+**So that** I can review scans and sign off reports efficiently.
+
+```gherkin
+Scenario: View radiology worklist
+  Given a doctor orders an X-ray or MRI
+  When the patient arrives and the imaging is done
+  Then the study appears in the radiologist's pending worklist
+  
+Scenario: Complete a radiology report
+  Given I am a radiologist
+  When I open a pending study
+  And review the DICOM images
+  And I type or dictate my findings
+  And I mark the report "Final"
+  Then the diagnostic report is saved and linked to the patient's chart
+```
+
+---
+
+## Sprint 14: SaaS Go-to-Market & Operations
+
+### S-SAAS-6 · Stripe Automated Billing Loop · **P1** · 8 pts
+**As a** system administrator
+**I want** automatic subscription lifecycle management via Stripe webhooks
+**So that** tenants are correctly billed or downgraded automatically.
+
+```gherkin
+Scenario: Handle Stripe invoice.payment_succeeded
+  Given a hospital is on a paid subscription
+  When Stripe successfully charges the payment method
+  Then the webhook updates the tenant status to "active"
+  And records the payment in the SaaS billing ledger
+
+Scenario: Handle Stripe customer.subscription.deleted
+  Given a hospital cancels or fails to pay for their subscription
+  When the Stripe webhook notifies of cancellation
+  Then the tenant is downgraded or marked as "suspended"
+```
+
+### S-SAAS-7 · Tenant Offboarding & DISHA Compliance · **P2** · 13 pts
+**As a** hospital administrator
+**I want** the ability to cleanly offboard and export my data
+**So that** we comply with DISHA guidelines for data portability.
+
+```gherkin
+Scenario: Request FHIR data export
+  Given I am a super-admin of a tenant
+  When I initiate a full data export request
+  Then the system generates a secure FHIR bundle of all patient records
+  And provides a signed URL for download
+
+Scenario: Tenant deletion
+  Given a tenant has ceased operations
+  When we perform a hard delete mechanism
+  Then all tenant records, including RLS-isolated data across all tables, are permanently destroyed
+```
+
+---
+
+## Sprint 15: Production Infrastructure & Compliance
+
+### S-INFRA-1 · CI/CD, Error Tracking & Load Testing · **P1** · 13 pts
+**As a** DevOps engineer
+**I want** continuous deployment, Sentry error tracking, and performance testing
+**So that** the system is resilient under load and bugs are caught early.
+
+```gherkin
+Scenario: Code promotion pipeline
+  Given a developer merges code to the main branch
+  When the GitHub Actions pipeline runs
+  Then it runs linting and automated tests
+  And if successful, deploys a Vercel preview or promotes to production
+
+Scenario: Report unhandled exceptions
+  Given an unexpected error occurs in the React app
+  When the error boundary catches it
+  Then the stack trace is automatically sent to Sentry with the tenant and release context
+```
+
+### S-COMPLIANCE-1 · ABDM Verification Prep · **P1** · 8 pts
+**As a** compliance officer
+**I want** to ensure the systems connect to NHA sandbox for HIP/HRP certification
+**So that** Ayura OS can handle live Indian patient data.
+
+```gherkin
+Scenario: ABDM linking sandbox test
+  Given the application is configured with NHA sandbox credentials
+  When a user attempts to link an ABHA ID
+  Then the system successfully calls the sandbox API to request OTP
+  And verifies the OTP and fetches the patient's KYC data
+```

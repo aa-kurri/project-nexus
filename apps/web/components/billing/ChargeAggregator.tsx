@@ -16,7 +16,7 @@ interface ChargeItem {
   is_reconciled: boolean;
 }
 
-export default function ChargeAggregator() {
+export default function ChargeAggregator({ encounterId }: { encounterId?: string }) {
   const supabase = createClient();
   const [items, setItems] = useState<ChargeItem[]>([]);
   const [settled, setSettled] = useState(false);
