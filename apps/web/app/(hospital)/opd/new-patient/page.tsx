@@ -1,151 +1,112 @@
-"use client";
-
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { UserPlus, Phone, User, Calendar, Loader2, ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { TopBar } from "@/components/hospital/TopBar";
-import { registerPatient } from "./actions";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { User, Calendar, Phone, Mail, MapPin, Hash, Search, ArrowRight, Activity } from "lucide-react";
 
 export default function NewPatientPage() {
-  const router = useRouter();
-  const [pending, startTx] = useTransition();
-  const [error, setError]  = useState<string | null>(null);
-
-  const [phone, setPhone] = useState("");
-  const [name,  setName]  = useState("");
-  const [dob,   setDob]   = useState("");
-  const [gender, setGender] = useState<"male" | "female" | "other">("male");
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    startTx(async () => {
-      const res = await registerPatient({ phone, name, dob, gender });
-      if (res.ok) {
-        router.push("/opd/queue");
-      } else {
-        setError(res.error);
-      }
-    });
-  };
-
   return (
     <>
-      <TopBar title="Register New Patient" />
-      <main className="flex-1 flex items-start justify-center p-8">
-        <div className="w-full max-w-md">
-
-          <Link
-            href="/opd/queue"
-            className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to queue
-          </Link>
-
-          <div className="rounded-2xl border border-border bg-surface/60 p-8 shadow-2xl shadow-black/30 backdrop-blur-sm">
-            <div className="mb-6 flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0F766E]/15 text-[#0F766E]">
-                <UserPlus className="h-5 w-5" />
-              </span>
-              <div>
-                <h2 className="text-lg font-semibold text-fg">Quick registration</h2>
-                <p className="text-xs text-muted">Target: under 45 seconds</p>
-              </div>
-            </div>
-
-            <form onSubmit={submit} className="space-y-4">
-              {/* Phone */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                  Phone number
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-                  <Input
-                    type="tel"
-                    placeholder="+91 98765 43210"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    className="pl-9"
-                    required
-                    autoFocus
-                  />
+      <TopBar 
+        title="Patient Registration" 
+        action={{ label: "Go to Queue", href: "/opd/queue" }}
+      />
+      <main className="p-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Main Registration Form */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-border/40 bg-surface/50 backdrop-blur-xl shadow-2xl">
+              <CardHeader className="border-b border-border/40">
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <User className="h-5 w-5 text-[#0F766E]" />
+                  Internal Patient File
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+                
+                {/* Identification */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormItem label="Full Name" icon={User} placeholder="John Doe" />
+                  <FormItem label="Phone Number" icon={Phone} placeholder="+91 00000 00000" />
                 </div>
-              </div>
 
-              {/* Name */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                  Full name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-                  <Input
-                    placeholder="Ramesh Kumar"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    className="pl-9"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* DOB + Gender */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                    Date of birth
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-                    <Input
-                      type="date"
-                      value={dob}
-                      onChange={e => setDob(e.target.value)}
-                      className="pl-9"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormItem label="Date of Birth" icon={Calendar} placeholder="DD/MM/YYYY" type="date" />
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted uppercase tracking-widest">Gender</label>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1 bg-black/20 border-border/40 hover:bg-[#0F766E]/10">Male</Button>
+                      <Button variant="outline" className="flex-1 bg-black/20 border-border/40 hover:bg-[#0F766E]/10">Female</Button>
+                    </div>
                   </div>
+                  <FormItem label="Aadhar / Govt ID" icon={Hash} placeholder="0000 0000 0000" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted">
-                    Gender
-                  </label>
-                  <select
-                    value={gender}
-                    onChange={e => setGender(e.target.value as typeof gender)}
-                    className="flex h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+
+                <FormItem label="Address" icon={MapPin} placeholder="Street, City, State, ZIP" />
+
+                <div className="pt-4 flex items-center justify-between gap-4">
+                  <Button variant="ghost" className="text-muted hover:text-fg">Clear Fields</Button>
+                  <Button className="bg-[#0F766E] hover:bg-[#115E59] text-white px-8 h-12 text-lg font-bold shadow-lg shadow-[#0F766E]/20 group">
+                    Create Patient Record
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
                 </div>
-              </div>
-
-              {error && (
-                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-                  {error}
-                </p>
-              )}
-
-              <Button
-                type="submit"
-                className="mt-2 w-full bg-[#0F766E] hover:bg-[#115E59]"
-                disabled={pending || !phone || !name}
-              >
-                {pending ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Registering…</>
-                ) : (
-                  <><UserPlus className="h-4 w-4" /> Register &amp; Add to Queue</>
-                )}
-              </Button>
-            </form>
+              </CardContent>
+            </Card>
           </div>
+
+          {/* Quick Search / Existing Records */}
+          <div className="space-y-6">
+            <Card className="border-[#0F766E]/30 bg-[#0F766E]/5 relative overflow-hidden">
+              <CardHeader>
+                <CardTitle className="text-sm uppercase tracking-widest text-[#0F766E]">Quick Search</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#0F766E]/50" />
+                  <Input placeholder="Search existing ID..." className="pl-10 bg-black/40 border-[#0F766E]/30" />
+                </div>
+                <div className="p-3 rounded-lg bg-black/20 border border-border/40 text-xs text-muted">
+                   Tip: Type patient mobile or UHID to see if they're already registered.
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Vitals Capture (Simulated) */}
+            <Card className="border-border/40 bg-surface/50">
+              <CardHeader><CardTitle className="text-sm">Initial Vitals</CardTitle></CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3">
+                <VitalItem label="Temp" value="98.6°F" icon={Activity} />
+                <VitalItem label="BP" value="120/80" icon={Activity} />
+              </CardContent>
+            </Card>
+          </div>
+
         </div>
       </main>
     </>
+  );
+}
+
+function FormItem({ label, icon: Icon, placeholder, type = "text" }: any) {
+  return (
+    <div className="space-y-1.5 text-left">
+      <label className="text-[10px] font-bold text-muted uppercase tracking-widest">{label}</label>
+      <div className="relative">
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/50" />
+        <Input type={type} placeholder={placeholder} className="pl-10 bg-black/20 border-border/40 focus:border-[#0F766E] transition-all" />
+      </div>
+    </div>
+  );
+}
+
+function VitalItem({ label, value, icon: Icon }: any) {
+  return (
+    <div className="p-3 rounded-xl bg-black/20 border border-border/20 flex flex-col items-center gap-1">
+      <Icon className="h-3 w-3 text-[#0F766E]" />
+      <span className="text-[10px] uppercase text-muted font-bold tracking-tighter">{label}</span>
+      <span className="text-sm font-bold text-fg">{value}</span>
+    </div>
   );
 }
