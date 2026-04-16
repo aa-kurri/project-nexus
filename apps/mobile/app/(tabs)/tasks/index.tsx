@@ -1,5 +1,7 @@
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { CheckSquare, Clock, AlertCircle, ChevronRight } from "lucide-react-native";
+import { useState } from "react";
+import { completeTask, fetchTaskList } from "./actions";
 
 const BG      = "hsl(220, 15%, 6%)";
 const SURFACE = "hsl(220, 13%, 9%)";
@@ -24,8 +26,25 @@ const MOCK_TASKS = [
 ];
 
 export default function TasksScreen() {
-  const pending   = MOCK_TASKS.filter(t => !t.done);
-  const completed = MOCK_TASKS.filter(t =>  t.done);
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [completing, setCompleting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const pending = MOCK_TASKS.filter(t => !completed.has(t.id));
+  const completedTasks = MOCK_TASKS.filter(t => completed.has(t.id));
+
+  async function handleCompleteTask(taskId: string) {
+    setCompleting(taskId);
+    setError(null);
+    try {
+      await completeTask({ taskId });
+      setCompleted((prev) => new Set([...prev, taskId]));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to complete task");
+    } finally {
+      setCompleting(null);
+    }
+  }
 
   return (
     <ScrollView
@@ -53,20 +72,25 @@ export default function TasksScreen() {
         ) : pending.map((task, i) => (
           <Pressable
             key={task.id}
+            onPress={() => handleCompleteTask(task.id)}
+            disabled={completing === task.id}
             style={({ pressed }) => ({
               flexDirection: "row", alignItems: "center",
               paddingHorizontal: 16, paddingVertical: 14,
               borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER,
-              opacity: pressed ? 0.7 : 1,
+              opacity: pressed ? 0.7 : completing === task.id ? 0.6 : 1,
             })}
           >
-            {/* TODO: actions.completeTask(task.id) — updates task status */}
             <View style={{ width: 36, height: 36, borderRadius: 10,
               backgroundColor: `${PRIORITY_COLOR[task.priority]}20`,
               alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              {task.priority === "urgent"
-                ? <AlertCircle size={18} color={PRIORITY_COLOR[task.priority]} />
-                : <CheckSquare size={18} color={PRIORITY_COLOR[task.priority]} />}
+              {completing === task.id ? (
+                <ActivityIndicator color={PRIORITY_COLOR[task.priority]} size="small" />
+              ) : task.priority === "urgent" ? (
+                <AlertCircle size={18} color={PRIORITY_COLOR[task.priority]} />
+              ) : (
+                <CheckSquare size={18} color={PRIORITY_COLOR[task.priority]} />
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: "#f9fafb", fontWeight: "600" }}>{task.title}</Text>
@@ -77,14 +101,23 @@ export default function TasksScreen() {
                 <Clock size={11} color="#6b7280" />
                 <Text style={{ color: "#6b7280", fontSize: 12 }}>{task.due}</Text>
               </View>
-              <ChevronRight size={14} color="#4b5563" />
+              {completing !== task.id && <ChevronRight size={14} color="#4b5563" />}
             </View>
           </Pressable>
         ))}
       </View>
 
+      {/* Error banner */}
+      {error && (
+        <View style={{ marginHorizontal: 16, marginTop: 16,
+          backgroundColor: "#ef444420", borderRadius: 12,
+          borderWidth: 1, borderColor: "#f87171", padding: 12 }}>
+          <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600" }}>{error}</Text>
+        </View>
+      )}
+
       {/* Completed section */}
-      {completed.length > 0 && (
+      {completedTasks.length > 0 && (
         <>
           <Text style={{ color: "#4b5563", fontSize: 12, fontWeight: "600",
             textTransform: "uppercase", letterSpacing: 0.5,
@@ -93,7 +126,7 @@ export default function TasksScreen() {
           </Text>
           <View style={{ marginHorizontal: 16, borderRadius: 16,
             backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, overflow: "hidden" }}>
-            {completed.map((task, i) => (
+            {completedTasks.map((task, i) => (
               <View
                 key={task.id}
                 style={{

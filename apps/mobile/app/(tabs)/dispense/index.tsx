@@ -1,6 +1,7 @@
-import { View, Text, ScrollView, Pressable, TextInput } from "react-native";
-import { Package, Search, AlertCircle, CheckCircle, ChevronRight } from "lucide-react-native";
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator } from "react-native";
+import { Package, Search, AlertCircle, CheckCircle, ChevronRight, Barcode } from "lucide-react-native";
 import { useState } from "react";
+import { recordDispense } from "./actions";
 
 const BG      = "hsl(220, 15%, 6%)";
 const SURFACE = "hsl(220, 13%, 9%)";
@@ -23,10 +24,43 @@ const LOW_STOCK = [
 
 export default function DispenseScreen() {
   const [query, setQuery] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [dispensing, setDispensing] = useState<string | null>(null);
+  const [dispensed, setDispensed] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
   const filtered = PENDING_RX.filter(r =>
-    r.patient.toLowerCase().includes(query.toLowerCase()) ||
-    r.drug.toLowerCase().includes(query.toLowerCase())
+    !dispensed.has(r.id) && (
+      r.patient.toLowerCase().includes(query.toLowerCase()) ||
+      r.drug.toLowerCase().includes(query.toLowerCase())
+    )
   );
+
+  async function handleBarcodeSimulate() {
+    setScanning(true);
+    setError(null);
+    // Mock: simulate barcode scan delay
+    await new Promise((r) => setTimeout(r, 800));
+    // In real app, camera would capture barcode and auto-match to Rx
+    if (filtered.length > 0) {
+      const first = filtered[0];
+      handleDispenseRx(first.id);
+    }
+    setScanning(false);
+  }
+
+  async function handleDispenseRx(rxId: string) {
+    setDispensing(rxId);
+    setError(null);
+    try {
+      await recordDispense({ rxId });
+      setDispensed((prev) => new Set([...prev, rxId]));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to dispense");
+    } finally {
+      setDispensing(null);
+    }
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -37,6 +71,29 @@ export default function DispenseScreen() {
           {PENDING_RX.length} prescriptions pending
         </Text>
       </View>
+
+      {/* Barcode scanner button */}
+      <Pressable
+        onPress={handleBarcodeSimulate}
+        disabled={scanning}
+        style={({ pressed }) => ({
+          marginHorizontal: 16, marginBottom: 12,
+          backgroundColor: `${PRIMARY}20`, borderRadius: 12,
+          borderWidth: 1, borderColor: PRIMARY,
+          flexDirection: "row", alignItems: "center",
+          justifyContent: "center", gap: 8, paddingVertical: 12,
+          opacity: pressed ? 0.7 : 1,
+        })}
+      >
+        {scanning ? (
+          <ActivityIndicator color={PRIMARY} size="small" />
+        ) : (
+          <Barcode size={18} color={PRIMARY} />
+        )}
+        <Text style={{ color: PRIMARY, fontWeight: "600", fontSize: 14 }}>
+          {scanning ? "Scanning…" : "Scan Barcode"}
+        </Text>
+      </Pressable>
 
       {/* Search */}
       <View style={{ marginHorizontal: 16, marginBottom: 12,
@@ -53,6 +110,14 @@ export default function DispenseScreen() {
           onChangeText={setQuery}
         />
       </View>
+
+      {error && (
+        <View style={{ marginHorizontal: 16, marginBottom: 12,
+          backgroundColor: "#ef444420", borderRadius: 12,
+          borderWidth: 1, borderColor: "#f87171", padding: 12 }}>
+          <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600" }}>{error}</Text>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Pending Rx list */}
@@ -89,13 +154,19 @@ export default function DispenseScreen() {
                 </Text>
               </View>
               <Pressable
+                onPress={() => handleDispenseRx(rx.id)}
+                disabled={dispensing === rx.id}
                 style={({ pressed }) => ({
                   backgroundColor: `${PRIMARY}20`, borderRadius: 10,
                   paddingHorizontal: 12, paddingVertical: 8,
-                  opacity: pressed ? 0.7 : 1,
+                  opacity: pressed ? 0.7 : dispensing === rx.id ? 0.6 : 1,
                 })}
               >
-                <CheckCircle size={18} color={PRIMARY} />
+                {dispensing === rx.id ? (
+                  <ActivityIndicator color={PRIMARY} size="small" />
+                ) : (
+                  <CheckCircle size={18} color={PRIMARY} />
+                )}
               </Pressable>
             </Pressable>
           ))}

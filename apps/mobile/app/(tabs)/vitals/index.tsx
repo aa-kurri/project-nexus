@@ -1,6 +1,7 @@
-import { View, Text, ScrollView, Pressable, TextInput } from "react-native";
-import { Thermometer, Activity, Wind, Heart, ChevronRight } from "lucide-react-native";
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator } from "react-native";
+import { Thermometer, Activity, Wind, Heart, ChevronRight, AlertCircle } from "lucide-react-native";
 import { useState } from "react";
+import { saveVitals } from "./actions";
 
 const BG      = "hsl(220, 15%, 6%)";
 const SURFACE = "hsl(220, 13%, 9%)";
@@ -9,9 +10,9 @@ const BORDER  = "#1e2332";
 
 // TODO: fetch from observations where category='vital-signs' and encounter.location_id in nurse's ward
 const MOCK_VITALS_QUEUE = [
-  { id: "v1", patient: "Ramesh Kumar", bed: "GA-01", lastRecorded: "08:00", overdue: true  },
-  { id: "v2", patient: "Priya Sharma", bed: "GA-04", lastRecorded: "09:00", overdue: false },
-  { id: "v3", patient: "Anita Verma",  bed: "ICU-01",lastRecorded: "09:30", overdue: false },
+  { id: "v1", patient: "Ramesh Kumar", bed: "GA-01", lastRecorded: "08:00", overdue: true, patientId: "p-1" },
+  { id: "v2", patient: "Priya Sharma", bed: "GA-04", lastRecorded: "09:00", overdue: false, patientId: "p-2" },
+  { id: "v3", patient: "Anita Verma",  bed: "ICU-01",lastRecorded: "09:30", overdue: false, patientId: "p-3" },
 ];
 
 const VITAL_FIELDS = [
@@ -19,14 +20,47 @@ const VITAL_FIELDS = [
   { key: "spo2",   label: "SpO₂",   unit: "%",    Icon: Activity,    placeholder: "98"   },
   { key: "rr",     label: "RR",     unit: "/min",  Icon: Wind,        placeholder: "16"   },
   { key: "hr",     label: "HR",     unit: "bpm",   Icon: Heart,       placeholder: "72"   },
+  { key: "pain",   label: "Pain",   unit: "0-10",  Icon: AlertCircle, placeholder: "0"    },
 ];
 
 export default function VitalsScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   const [values,   setValues]   = useState<Record<string, string>>({});
   const [bp,       setBp]       = useState({ sys: "", dia: "" });
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+  const [success,  setSuccess]  = useState(false);
 
   const selectedPatient = MOCK_VITALS_QUEUE.find(p => p.id === selected);
+
+  async function handleSaveVitals() {
+    if (!selectedPatient) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await saveVitals({
+        patientId: selectedPatient.patientId,
+        temp: values.temp ? parseFloat(values.temp) : null,
+        spo2: values.spo2 ? parseFloat(values.spo2) : null,
+        rr: values.rr ? parseFloat(values.rr) : null,
+        hr: values.hr ? parseFloat(values.hr) : null,
+        pain: values.pain ? parseFloat(values.pain) : null,
+        sysBp: bp.sys ? parseFloat(bp.sys) : null,
+        diaBp: bp.dia ? parseFloat(bp.dia) : null,
+      });
+      setSuccess(true);
+      setTimeout(() => {
+        setSelected(null);
+        setValues({});
+        setBp({ sys: "", dia: "" });
+        setSuccess(false);
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save vitals");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -140,15 +174,36 @@ export default function VitalsScreen() {
             </View>
           </View>
 
+          {error && (
+            <View style={{ backgroundColor: "#ef444420", borderRadius: 12,
+              borderWidth: 1, borderColor: "#f87171", padding: 12, marginTop: 16 }}>
+              <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600" }}>{error}</Text>
+            </View>
+          )}
+
+          {success && (
+            <View style={{ backgroundColor: "#05966920", borderRadius: 12,
+              borderWidth: 1, borderColor: "#10b981", padding: 12, marginTop: 16 }}>
+              <Text style={{ color: "#10b981", fontSize: 13, fontWeight: "600" }}>✓ Vitals saved successfully</Text>
+            </View>
+          )}
+
           <Pressable
+            disabled={saving || success}
+            onPress={handleSaveVitals}
             style={({ pressed }) => ({
-              marginTop: 16, backgroundColor: PRIMARY, borderRadius: 14,
+              marginTop: 16, backgroundColor: success ? "#059669" : PRIMARY, borderRadius: 14,
               paddingVertical: 16, alignItems: "center",
-              opacity: pressed ? 0.8 : 1,
+              opacity: pressed ? 0.8 : saving ? 0.6 : 1,
             })}
           >
-            {/* TODO: actions.saveVitals() — inserts into observations with category='vital-signs' */}
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Save Vitals</Text>
+            {saving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+                {success ? "✓ Saved" : "Save Vitals"}
+              </Text>
+            )}
           </Pressable>
         </ScrollView>
       )}

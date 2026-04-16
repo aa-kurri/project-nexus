@@ -44,9 +44,10 @@
     "S-SAAS-5",
     "S-MOB-RBAC",
     "S-MOB-DOCTOR",
-    "S-MOB-ADMIN"
+    "S-MOB-ADMIN",
+    "S-MOB-STAFF"
   ],
   "skipped": [],
-  "last_run": "2026-04-16T01:45:54.235Z",
-  "last_slug": "S-MOB-ADMIN"
+  "last_run": "2026-04-16T01:50:05.924Z",
+  "last_slug": "S-MOB-STAFF"
 }

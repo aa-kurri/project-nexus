@@ -1,5 +1,6 @@
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { FlaskConical, Clock, CheckCircle, Upload, ChevronRight } from "lucide-react-native";
+import { markCollected, uploadResult } from "./actions";
 
 const BG      = "hsl(220, 15%, 6%)";
 const SURFACE = "hsl(220, 13%, 9%)";
@@ -36,10 +37,41 @@ import { useState } from "react";
 
 export default function LabScreen() {
   const [activeTab, setActiveTab] = useState<SampleStatus | "all">("all");
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [updatedSamples, setUpdatedSamples] = useState<Record<string, SampleStatus>>({});
 
-  const visible = activeTab === "all"
-    ? MOCK_SAMPLES
-    : MOCK_SAMPLES.filter(s => s.status === activeTab);
+  const getSampleStatus = (sample: typeof MOCK_SAMPLES[0]) => {
+    return updatedSamples[sample.id] || sample.status;
+  };
+
+  const visible = MOCK_SAMPLES
+    .map(s => ({ ...s, status: getSampleStatus(s) }))
+    .filter(s => activeTab === "all" || s.status === activeTab);
+
+  async function handleMarkCollected(sampleId: string) {
+    setProcessing(sampleId);
+    try {
+      await markCollected({ sampleId });
+      setUpdatedSamples((prev) => ({ ...prev, [sampleId]: "collected" }));
+    } catch (err) {
+      console.error("Failed to mark collected:", err);
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  async function handleUploadResult(sampleId: string) {
+    setProcessing(sampleId);
+    try {
+      // TODO: In real app, this would open a form to enter results
+      await uploadResult({ sampleId });
+      console.log("Result uploaded for sample:", sampleId);
+    } catch (err) {
+      console.error("Failed to upload result:", err);
+    } finally {
+      setProcessing(null);
+    }
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -123,12 +155,34 @@ export default function LabScreen() {
                     </Text>
                   </View>
                   {sample.status === "pending_collection" && (
-                    /* TODO: actions.markCollected(sample.id) — updates lab_samples.collected_at */
-                    <CheckCircle size={18} color={PRIMARY} />
+                    <Pressable
+                      onPress={() => handleMarkCollected(sample.id)}
+                      disabled={processing === sample.id}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.7 : processing === sample.id ? 0.6 : 1,
+                      })}
+                    >
+                      {processing === sample.id ? (
+                        <ActivityIndicator color={PRIMARY} size="small" />
+                      ) : (
+                        <CheckCircle size={18} color={PRIMARY} />
+                      )}
+                    </Pressable>
                   )}
                   {sample.status === "resulted" && (
-                    /* TODO: actions.uploadResult(sample.id) — attaches to diagnostic_reports */
-                    <Upload size={18} color="#6366f1" />
+                    <Pressable
+                      onPress={() => handleUploadResult(sample.id)}
+                      disabled={processing === sample.id}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.7 : processing === sample.id ? 0.6 : 1,
+                      })}
+                    >
+                      {processing === sample.id ? (
+                        <ActivityIndicator color="#6366f1" size="small" />
+                      ) : (
+                        <Upload size={18} color="#6366f1" />
+                      )}
+                    </Pressable>
                   )}
                   {!["pending_collection", "resulted"].includes(sample.status) && (
                     <ChevronRight size={14} color="#4b5563" />
