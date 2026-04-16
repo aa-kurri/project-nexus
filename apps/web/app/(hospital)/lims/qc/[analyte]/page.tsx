@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { supabaseServer as createClient } from '@/lib/supabase/server';
 import { LeveyJenningsChart } from '@/components/qc/LeveyJenningsChart';
 import { notFound } from 'next/navigation';
 
