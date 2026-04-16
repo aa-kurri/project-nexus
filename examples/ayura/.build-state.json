@@ -46,9 +46,10 @@
     "S-MOB-DOCTOR",
     "S-MOB-ADMIN",
     "S-MOB-STAFF",
-    "S-MOB-PATIENT-V2"
+    "S-MOB-PATIENT-V2",
+    "S-AI-SCRIBE-LIVE"
   ],
   "skipped": [],
-  "last_run": "2026-04-16T06:01:56.995Z",
-  "last_slug": "S-MOB-PATIENT-V2"
+  "last_run": "2026-04-16T12:53:28.648Z",
+  "last_slug": "S-AI-SCRIBE-LIVE"
 }
