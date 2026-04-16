@@ -124,6 +124,43 @@
 | 8 | P1 | Staff mobile screens (vitals charting, Rx dispense, lab worklist, task board) | `S-MOB-STAFF` |
 | 5 | P1 | Patient app v2 (biometric lock, teleconsult, prescriptions, push notifications) | `S-MOB-PATIENT-V2` |
 
+## Sprint 12 · 2026-09-21 → 2026-10-04 · **21 pts**
+**Goal:** De-stub core AI paths and wire real auth flows.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 8 | P0 | Wire Clinical Scribe to real Claude API (speech → SOAP server action) | `S-AI-SCRIBE-LIVE` |
+| 8 | P0 | Replace mock Copilot with pgvector RAG (embeddings + citation retrieval) | `S-AI-COPILOT-RAG` |
+| 5 | P0 | Build /auth login + register flows for staff and patients (empty folder) | `S-AUTH-FLOW` |
+
+## Sprint 13 · 2026-10-05 → 2026-10-18 · **18 pts**
+**Goal:** Fill sidebar gaps and add real-time queue broadcasting.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 8 | P0 | IPD Nurse Station page — vitals charting, task board, medication alerts | `S-IPD-NURSE` |
+| 5 | P0 | MIS Reports page — census, revenue, procedure counts, CSV export | `S-REPORT-MIS` |
+| 5 | P1 | Replace queue board polling with Supabase Realtime WebSocket | `S-OPD-REALTIME` |
+
+## Sprint 14 · 2026-10-19 → 2026-11-01 · **21 pts**
+**Goal:** Indian payment gateway, patient portal, discharge workflow.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 8 | P0 | Replace Stripe with Razorpay — subscriptions, webhook, tenant billing portal | `S-PAY-RAZORPAY` |
+| 8 | P0 | Patient portal — medical records, prescriptions, lab reports, appointments | `S-PATIENT-PORTAL` |
+| 5 | P1 | Discharge workflow — checklist, final bill gate, FHIR bundle export | `S-DISCHARGE` |
+
+## Sprint 15 · 2026-11-02 → 2026-11-15 · **21 pts**
+**Goal:** Production readiness — monitoring, CI/CD, OT backend, ABDM compliance.
+
+| Pts | Priority | Story | Slug |
+|---|---|---|---|
+| 5 | P0 | Sentry error monitoring wired to web + mobile with error boundaries | `S-INFRA-SENTRY` |
+| 8 | P0 | GitHub Actions CI/CD — lint, typecheck, Vercel preview on PR, prod on main | `S-INFRA-CICD` |
+| 5 | P1 | OT scheduling backend — room availability API, surgeon conflict check | `S-OT-BACKEND` |
+| 3 | P1 | ABDM HIP compliance checklist page + FHIR R4 validation endpoint | `S-COMPLIANCE-ABDM` |
+
 ---
 
 ## Roadmap (Mermaid Gantt)

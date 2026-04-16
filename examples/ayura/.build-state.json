@@ -46,12 +46,9 @@
     "S-MOB-DOCTOR",
     "S-MOB-ADMIN",
     "S-MOB-STAFF",
-    "S-MOB-PATIENT-V2",
-    "S-AUTH-WEBAUTHN-LIVE"
+    "S-MOB-PATIENT-V2"
   ],
-  "skipped": [
-    "S-AI-REAL"
-  ],
+  "skipped": [],
   "last_run": "2026-04-16T06:01:56.995Z",
-  "last_slug": "S-AUTH-WEBAUTHN-LIVE"
+  "last_slug": "S-MOB-PATIENT-V2"
 }

@@ -770,161 +770,281 @@ Scenario: Push notification for lab result
 
 ---
 
-## Sprint 12: Wire Real Implementations (De-stubbing)
+## Epic: E15 · Core AI (De-stubbing)
 
-### S-AI-REAL · Real AI Implementations · **P1** · 13 pts
-**As a** system maintainer
-**I want** to replace AI Scribe and logic stubs with real integrations
-**So that** features are fully functional.
+### S-AI-SCRIBE-LIVE · Wire Clinical Scribe to real Claude API · **P0** · 8 pts
+**As a** doctor
+**I want** the AI Scribe to actually transcribe and parse my dictation via Claude
+**So that** SOAP notes are generated from real speech, not a mock.
 
 ```gherkin
-Scenario: AI Scribe Speech-to-SOAP
-  Given a doctor records dictation during a consult
-  When the recording is complete
-  Then it is sent to the Whisper API for transcription
-  And the text is sent to Claude API to parse into a SOAP note format
-  Then the parsed structured SOAP note populates the patient encounter
+Scenario: Speech-to-SOAP via real API
+  Given I open the AI Scribe page and click Record
+  When I speak the consultation and click Stop
+  Then the audio blob is sent to /api/ai/scribe (server action)
+    And the server calls Whisper for transcription
+    And passes the transcript to Claude claude-sonnet-4-6 with a SOAP system prompt
+    And the structured SOAP note is returned and displayed in the editor
 
-Scenario: WhatsApp Concierge interaction
-  Given a patient sends a WhatsApp message to the clinic number
-  When the Meta Business API webhook receives the payload
-  Then it is processed by the AI receptionist
-  And an appropriate response or booking link is sent back
+Scenario: Save SOAP note to encounter
+  Given the SOAP note is displayed
+  When I click "Save Note"
+  Then a doctor_notes row is inserted with the structured SOAP content
+    And the encounter status is updated to "in-progress"
 ```
 
-### S-AUTH-WEBAUTHN-LIVE · WebAuthn and Biometrics Server Validation · **P1** · 8 pts
-**As a** security administrator
-**I want** real cryptographic verification for WebAuthn and biometric PIN overrides
-**So that** the application security is truly zero-trust.
+### S-AI-COPILOT-RAG · Replace mock Copilot with pgvector RAG · **P0** · 8 pts
+**As a** doctor
+**I want** the Clinical Copilot to answer from actual patient history using vector search
+**So that** answers are grounded in real chart data, not mocked responses.
 
 ```gherkin
-Scenario: WebAuthn registration
-  Given a staff member registers a hardware key
-  When the client completes the WebAuthn challenge
-  Then it sends it to the server action
-  And the server verifies the response using @simplewebauthn/server and stores the CBOR public key
+Scenario: Copilot answers from patient chart
+  Given I am viewing patient P-1234 and open the Copilot pane
+  When I ask "Has this patient been on Metformin?"
+  Then the server calls pgvector similarity search on doctor_notes + medication_requests
+    And passes retrieved chunks to Claude with the patient context
+    And the response shows "Yes — Metformin 500mg prescribed by Dr. Rao, Oct 2024"
+    And a clickable encounter citation is shown below the answer
 
-Scenario: Server-side PIN verification
-  Given a user is locked by a biometric fallback PIN
-  When they enter their PIN
-  Then it is hashed and compared on the server (bcrypt/Argon2) before unlocking the session
+Scenario: pgvector migration
+  Given the database is migrated
+  Then the doctor_notes table has a content_embedding vector(1536) column
+    And an ivfflat index exists for fast ANN search
 ```
 
----
-
-## Sprint 13: Advanced Clinical Modules (OT & Radiology)
-
-### S-OT-1 · Operation Theatre & Surgical Scheduling · **P2** · 13 pts
-**As a** surgical coordinator
-**I want** to schedule OT resources and surgical teams
-**So that** surgeries are coordinated safely and efficiently.
+### S-AUTH-FLOW · Build /auth login + register flows · **P0** · 5 pts
+**As a** staff member or patient
+**I want** a proper login and registration page
+**So that** the currently-empty /auth folder is replaced with working flows.
 
 ```gherkin
-Scenario: Book OT room
-  Given I am an OT coordinator
-  When I select an OT and a time slot
-  And assign a surgeon, anesthetist, and patient
-  Then an OT booking record is created
-  And the patient's admission status reflects surgical status
+Scenario: Staff login
+  Given I navigate to /auth/login
+  When I enter my email and password and click Sign In
+  Then Supabase Auth signs me in and I am redirected to /dashboard
 
-Scenario: Record OT Notes
-  Given a surgery is completed
-  When the surgeon enters operation notes in the OT module
-  Then the OT record is finalized
-  And it is appended to the patient's clinical history
-```
+Scenario: Patient OTP login
+  Given I navigate to /auth/login
+  When I click "Sign in with phone" and enter my mobile number
+  Then an OTP is sent via Supabase Auth
+  When I enter the OTP
+  Then I am redirected to the patient portal
 
-### S-RAD-1 · Radiology Worklist & DICOM Integration · **P2** · 13 pts
-**As a** radiologist
-**I want** a dedicated imaging worklist and viewer access
-**So that** I can review scans and sign off reports efficiently.
-
-```gherkin
-Scenario: View radiology worklist
-  Given a doctor orders an X-ray or MRI
-  When the patient arrives and the imaging is done
-  Then the study appears in the radiologist's pending worklist
-  
-Scenario: Complete a radiology report
-  Given I am a radiologist
-  When I open a pending study
-  And review the DICOM images
-  And I type or dictate my findings
-  And I mark the report "Final"
-  Then the diagnostic report is saved and linked to the patient's chart
+Scenario: New staff registration
+  Given I have a valid invite token in the URL
+  When I fill in name, email, password on /auth/register
+  Then my profile row is created with the invited role
+    And I am redirected to /dashboard
 ```
 
 ---
 
-## Sprint 14: SaaS Go-to-Market & Operations
+## Epic: E16 · Missing Pages + Real-time
 
-### S-SAAS-6 · Stripe Automated Billing Loop · **P1** · 8 pts
-**As a** system administrator
-**I want** automatic subscription lifecycle management via Stripe webhooks
-**So that** tenants are correctly billed or downgraded automatically.
+### S-IPD-NURSE · IPD Nurse Station page · **P0** · 8 pts
+**As a** nurse
+**I want** a dedicated nurse station screen with vitals entry and a task board
+**So that** I can chart observations and manage nursing tasks without the admin view.
 
 ```gherkin
-Scenario: Handle Stripe invoice.payment_succeeded
-  Given a hospital is on a paid subscription
-  When Stripe successfully charges the payment method
-  Then the webhook updates the tenant status to "active"
-  And records the payment in the SaaS billing ledger
+Scenario: Record patient vitals
+  Given I am on /ipd/nurse-station
+  When I select a patient from the ward list and enter BP, HR, SpO2, temp, pain score
+    And click Save
+  Then an observation row is inserted with the LOINC-coded values
+    And the IPD dashboard KPIs refresh via Supabase Realtime
 
-Scenario: Handle Stripe customer.subscription.deleted
-  Given a hospital cancels or fails to pay for their subscription
-  When the Stripe webhook notifies of cancellation
-  Then the tenant is downgraded or marked as "suspended"
+Scenario: Complete a nursing task
+  Given a task "Change IV line — Bed A-3" appears in Pending
+  When I click Done
+  Then the task moves to the Done column
+    And a timestamp is recorded on the task record
 ```
 
-### S-SAAS-7 · Tenant Offboarding & DISHA Compliance · **P2** · 13 pts
+### S-REPORT-MIS · MIS Reports page · **P0** · 5 pts
 **As a** hospital administrator
-**I want** the ability to cleanly offboard and export my data
-**So that** we comply with DISHA guidelines for data portability.
+**I want** a management information system report page at /analytics/mis
+**So that** I can review census, revenue, and procedure counts for any date range.
 
 ```gherkin
-Scenario: Request FHIR data export
-  Given I am a super-admin of a tenant
-  When I initiate a full data export request
-  Then the system generates a secure FHIR bundle of all patient records
-  And provides a signed URL for download
+Scenario: View daily MIS report
+  Given I am on /analytics/mis
+  When I pick a date range (e.g. this month)
+  Then I see: New Admissions, Discharges, OPD Visits, Lab Tests Run, Total Revenue
+    And each metric is broken down by department/ward
 
-Scenario: Tenant deletion
-  Given a tenant has ceased operations
-  When we perform a hard delete mechanism
-  Then all tenant records, including RLS-isolated data across all tables, are permanently destroyed
+Scenario: CSV export
+  Given the MIS report is displayed
+  When I click "Export CSV"
+  Then a CSV file is downloaded with the same row data
+```
+
+### S-OPD-REALTIME · Supabase Realtime queue board · **P1** · 5 pts
+**As a** receptionist
+**I want** the OPD queue board to update instantly without manual refresh
+**So that** I always see the live token status.
+
+```gherkin
+Scenario: Token status updates in real-time
+  Given I have the queue board open at /opd/queue
+  When a doctor calls the next token from their mobile app
+  Then the board updates within 1 second without a page reload
+    And the called token card moves to the "In Consult" column
+
+Scenario: New token joins queue
+  Given a new patient is registered
+  When their queue_token row is inserted
+  Then their card appears at the bottom of the Waiting column instantly
 ```
 
 ---
 
-## Sprint 15: Production Infrastructure & Compliance
+## Epic: E17 · Indian Payments + Patient Portal
 
-### S-INFRA-1 · CI/CD, Error Tracking & Load Testing · **P1** · 13 pts
-**As a** DevOps engineer
-**I want** continuous deployment, Sentry error tracking, and performance testing
-**So that** the system is resilient under load and bugs are caught early.
+### S-PAY-RAZORPAY · Razorpay subscription billing · **P0** · 8 pts
+**As a** hospital administrator
+**I want** to subscribe to an Ayura OS plan and pay via Razorpay (UPI, cards, net banking)
+**So that** billing works for Indian hospitals without a foreign payment gateway.
 
 ```gherkin
-Scenario: Code promotion pipeline
-  Given a developer merges code to the main branch
-  When the GitHub Actions pipeline runs
-  Then it runs linting and automated tests
-  And if successful, deploys a Vercel preview or promotes to production
+Scenario: New tenant subscribes via Razorpay
+  Given I am on /pricing and click "Subscribe — Hospital Plan"
+  When I complete payment via Razorpay Checkout (UPI / card)
+  Then Razorpay fires a payment.captured webhook to /api/webhooks/razorpay
+    And the tenant_subscriptions row is updated to tier="hospital", status="active"
+    And I receive a payment confirmation email
 
-Scenario: Report unhandled exceptions
-  Given an unexpected error occurs in the React app
-  When the error boundary catches it
-  Then the stack trace is automatically sent to Sentry with the tenant and release context
+Scenario: Subscription renewal failure
+  Given a tenant's auto-debit fails
+  When Razorpay fires a subscription.charged.failed webhook
+  Then the tenant status is set to "past_due"
+    And the hospital admin receives an email with a payment retry link
+
+Scenario: Stripe webhook route removed
+  Given the old /api/webhooks/stripe/route.ts exists
+  Then it is replaced by /api/webhooks/razorpay/route.ts
+    And tenant_subscriptions table updated with razorpay_subscription_id column
 ```
 
-### S-COMPLIANCE-1 · ABDM Verification Prep · **P1** · 8 pts
-**As a** compliance officer
-**I want** to ensure the systems connect to NHA sandbox for HIP/HRP certification
-**So that** Ayura OS can handle live Indian patient data.
+### S-PATIENT-PORTAL · Patient portal — records, prescriptions, labs · **P0** · 8 pts
+**As a** patient
+**I want** to view my medical records, prescriptions, and lab reports in the web portal
+**So that** I can access my health data without calling the hospital.
 
 ```gherkin
-Scenario: ABDM linking sandbox test
-  Given the application is configured with NHA sandbox credentials
-  When a user attempts to link an ABHA ID
-  Then the system successfully calls the sandbox API to request OTP
-  And verifies the OTP and fetches the patient's KYC data
+Scenario: View medical records
+  Given I am logged in as a patient at /patient/records
+  Then I see a timeline of my encounters sorted by date
+    And each encounter shows diagnosis, treating doctor, and date
+
+Scenario: Download prescription
+  Given I am on /patient/prescriptions
+  Then I see all active medication_requests with drug name, dose, frequency, and prescribing doctor
+  When I click "Download PDF"
+  Then a signed PDF is generated and downloaded
+
+Scenario: View lab results
+  Given I am on /patient/labs
+  Then I see all my diagnostic_reports sorted by date
+    And abnormal values are highlighted in red
+```
+
+### S-DISCHARGE · Discharge workflow — checklist, final bill, FHIR export · **P1** · 5 pts
+**As a** ward nurse or doctor
+**I want** a structured discharge workflow with checklist, bill finalisation, and FHIR export
+**So that** a patient is discharged completely with zero missing steps.
+
+```gherkin
+Scenario: Complete discharge checklist
+  Given I open /ipd/discharge/[admissionId]
+  Then I see a checklist: Discharge summary signed, Final bill approved, Medicines issued, Patient instructions given
+  When all items are checked and I click "Confirm Discharge"
+  Then the admission status is set to "discharged"
+    And the bed status is set to "cleaning"
+
+Scenario: Export FHIR discharge bundle
+  Given an admission is discharged
+  When I click "Export FHIR Bundle"
+  Then a FHIR R4 Bundle JSON is generated with Encounter, Condition, MedicationRequest, and DiagnosticReport resources
+    And a signed Supabase Storage URL is returned for download
+```
+
+---
+
+## Epic: E18 · Production Readiness
+
+### S-INFRA-SENTRY · Sentry error monitoring · **P0** · 5 pts
+**As a** developer
+**I want** Sentry wired to both the web app and mobile app
+**So that** unhandled errors are captured with full context automatically.
+
+```gherkin
+Scenario: Web app error captured
+  Given NEXT_PUBLIC_SENTRY_DSN is configured in the web app
+  When an unhandled exception occurs in a React component
+  Then Sentry captures it with: tenant_id, user role, release version, and full stack trace
+    And the error appears in the Sentry dashboard within 30 seconds
+
+Scenario: Mobile app error captured
+  Given SENTRY_DSN is configured in the Expo app
+  When a crash occurs on iOS or Android
+  Then Sentry captures the native crash report with device info and breadcrumbs
+```
+
+### S-INFRA-CICD · GitHub Actions CI/CD pipeline · **P0** · 8 pts
+**As a** developer
+**I want** automated linting, type-checking, and deployment on every PR and merge
+**So that** broken code never reaches production.
+
+```gherkin
+Scenario: PR opens — preview build
+  Given I open a pull request against main
+  When GitHub Actions runs the CI workflow
+  Then it runs: pnpm lint, pnpm tsc --noEmit, pnpm build
+    And on success posts a Vercel preview URL as a PR comment
+    And on failure the PR is blocked from merging
+
+Scenario: Merge to main — production deploy
+  Given all CI checks pass and the PR is merged to main
+  When the CD workflow triggers
+  Then Vercel promotes the preview to production
+    And a Slack/email notification is sent with the deploy URL
+```
+
+### S-OT-BACKEND · OT scheduling backend API · **P1** · 5 pts
+**As a** surgical coordinator
+**I want** an API that checks OT room availability and prevents surgeon double-booking
+**So that** the OT scheduler component is backed by real data.
+
+```gherkin
+Scenario: Check room availability
+  Given I select OT Room 1 and a time slot on 2026-11-10 09:00–11:00
+  When I call the availability check
+  Then the server queries ot_bookings for overlapping slots
+    And returns available: true or the conflicting booking details
+
+Scenario: Surgeon conflict check
+  Given surgeon Dr. Sharma already has a booking at 10:00–12:00
+  When I try to book them for 11:00–13:00
+  Then the API returns conflict: true with the clashing booking id
+    And the coordinator is prompted to pick a different surgeon or time
+```
+
+### S-COMPLIANCE-ABDM · ABDM HIP compliance checklist · **P1** · 3 pts
+**As a** compliance officer
+**I want** a checklist page showing ABDM HIP/HRP certification requirements and a FHIR validation endpoint
+**So that** I can track certification readiness before the NHA audit.
+
+```gherkin
+Scenario: View compliance checklist
+  Given I am on /settings/compliance
+  Then I see a checklist of ABDM HIP requirements:
+    ABHA linking flow, Consent manager integration, FHIR R4 profile conformance, PHI encryption at rest, Audit log completeness
+    And each item shows: status (done / in-progress / pending) and the relevant code file
+
+Scenario: FHIR validation endpoint
+  Given I POST a Patient FHIR resource to /api/fhir/validate
+  Then the endpoint validates it against the ABDM FHIR R4 profile
+    And returns: valid: true or a list of validation errors with field paths
 ```
