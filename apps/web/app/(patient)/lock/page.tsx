@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BiometricLockScreen, { type UnlockMethod } from "@/components/app/BiometricLockScreen";
 import BiometricSetup from "@/components/app/BiometricSetup";
-import { getLockSettings, type LockSettings } from "./actions";
+import { getLockSettings } from "./actions";
+import { type LockSettings } from "./types";
 
 // ── Lock screen states ────────────────────────────────────────────────────────
 

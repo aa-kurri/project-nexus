@@ -2,22 +2,7 @@
 
 import { z } from "zod";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface LockSettings {
-  lockEnabled:    boolean;
-  hasBiometric:   boolean;
-  hasPin:         boolean;
-  lockTimeoutMin: number;
-  patientName:    string;
-}
-
-export interface EnrolledDevice {
-  id:         string;
-  deviceName: string | null;
-  createdAt:  string;
-  lastUsedAt: string | null;
-}
+import { type LockSettings, type EnrolledDevice } from "./types";
 
 // ── getLockSettings ───────────────────────────────────────────────────────────
 

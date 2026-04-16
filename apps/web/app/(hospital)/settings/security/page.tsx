@@ -24,8 +24,8 @@ import { cn } from "@/lib/utils";
 import {
   getEnrolledKeys,
   revokeKey,
-  type StaffCredential,
 } from "./actions";
+import { type StaffCredential } from "./types";
 
 // ── Demo staff ID (replace with real auth session) ────────────────────────────
 const STUB_STAFF_ID = "00000000-0000-0000-0000-000000000001";

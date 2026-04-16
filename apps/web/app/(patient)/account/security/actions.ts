@@ -9,6 +9,4 @@ export {
   getBiometricChallenge,
   getEnrolledDevices,
   revokeDevice,
-  type LockSettings,
-  type EnrolledDevice,
 } from "@/app/(patient)/lock/actions";

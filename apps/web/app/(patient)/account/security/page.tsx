@@ -23,9 +23,8 @@ import {
   saveBiometricSettings,
   getEnrolledDevices,
   revokeDevice,
-  type LockSettings,
-  type EnrolledDevice,
 } from "./actions";
+import { type LockSettings, type EnrolledDevice } from "@/app/(patient)/lock/types";
 
 // ── Demo patient ID (replace with real auth session) ──────────────────────────
 const STUB_PATIENT_ID = "00000000-0000-0000-0000-000000000099";
