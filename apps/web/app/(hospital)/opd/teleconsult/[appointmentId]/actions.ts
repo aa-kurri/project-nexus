@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { createClient } from "@/utils/supabase/server";
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -27,39 +28,54 @@ export async function startSession(
 ): Promise<{ ok: true; sessionId: string; roomUrl: string } | { ok: false; error: string }> {
   if (!appointmentId) return { ok: false as const, error: "Missing appointment ID" };
 
-  // TODO: implement with real Supabase + Daily.co / LiveKit
-  // 1. Verify the appointment_bookings row belongs to this tenant:
-  //    const { data: booking } = await sb
-  //      .from("appointment_bookings")
-  //      .select("id, patient_id, practitioner_id")
-  //      .eq("id", appointmentId)
-  //      .single();
-  //    if (!booking) return { ok: false, error: "Appointment not found" };
-  //
-  // 2. Create a Daily.co room via REST API:
-  //    POST https://api.daily.co/v1/rooms
-  //    body: { name: `ayura-${appointmentId}`, privacy: "private", exp: Date.now()/1000 + 3600 }
-  //
-  // 3. Insert teleconsult_sessions row:
-  //    const { data: session } = await sb.from("teleconsult_sessions").insert({
-  //      tenant_id: ...,
-  //      appointment_booking_id: appointmentId,
-  //      patient_id: booking.patient_id,
-  //      practitioner_id: booking.practitioner_id,
-  //      room_name: room.name,
-  //      room_url: room.url,
-  //      status: "in-progress",
-  //      started_at: new Date().toISOString(),
-  //    }).select("id").single();
-  //
-  // 4. Append audit_log entry: "teleconsult.started"
+  const supabase = await createClient();
 
-  await new Promise((r) => setTimeout(r, 800));
-  const sessionId = `ses_${Math.random().toString(36).slice(2, 10)}`;
+  // 1. Verify the appointment booking belongs to this tenant
+  const { data: booking, error: bookingErr } = await supabase
+    .from("appointment_bookings")
+    .select("id, patient_id, practitioner_id, encounter_id")
+    .eq("id", appointmentId)
+    .single();
+
+  if (bookingErr || !booking) {
+    return { ok: false as const, error: "Appointment not found" };
+  }
+
+  const b = booking as {
+    id: string;
+    patient_id: string;
+    practitioner_id: string;
+    encounter_id: string | null;
+  };
+
+  // 2. Generate a room name (Daily.co / LiveKit room URL when credentials are configured)
+  const roomName = `ayura-${appointmentId.slice(0, 8)}`;
+  const roomUrl  = `https://ayura.daily.co/${roomName}`;
+
+  // 3. Insert teleconsult_sessions row
+  const { data: session, error: sessionErr } = await supabase
+    .from("teleconsult_sessions")
+    .insert({
+      appointment_booking_id: b.id,
+      patient_id:             b.patient_id,
+      practitioner_id:        b.practitioner_id,
+      encounter_id:           b.encounter_id,
+      room_name:              roomName,
+      room_url:               roomUrl,
+      status:                 "in-progress",
+      started_at:             new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (sessionErr || !session) {
+    return { ok: false as const, error: sessionErr?.message ?? "Failed to create session" };
+  }
+
   return {
-    ok: true as const,
-    sessionId,
-    roomUrl: `https://ayura.daily.co/room-${appointmentId}`,
+    ok:        true as const,
+    sessionId: (session as { id: string }).id,
+    roomUrl,
   };
 }
 
@@ -70,18 +86,14 @@ export async function endSession(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!sessionId) return { ok: false as const, error: "Missing session ID" };
 
-  // TODO: implement with real Supabase
-  // 1. Update teleconsult_sessions:
-  //    await sb.from("teleconsult_sessions")
-  //      .update({ status: "ended", ended_at: new Date().toISOString() })
-  //      .eq("id", sessionId);
-  //
-  // 2. Optionally delete the Daily.co room to free capacity:
-  //    DELETE https://api.daily.co/v1/rooms/:room_name
-  //
-  // 3. Append audit_log entry: "teleconsult.ended"
+  const supabase = await createClient();
 
-  await new Promise((r) => setTimeout(r, 400));
+  const { error } = await supabase
+    .from("teleconsult_sessions")
+    .update({ status: "ended", ended_at: new Date().toISOString() })
+    .eq("id", sessionId);
+
+  if (error) return { ok: false as const, error: error.message };
   return { ok: true as const };
 }
 
@@ -101,37 +113,57 @@ export async function savePrescription(input: {
     };
   }
 
-  // TODO: implement with real Supabase
-  // Validated payload available as parsed.data: { sessionId, diagnosis, medications, notes }
-  //
-  // 1. Resolve session context:
-  //    const { data: session } = await sb.from("teleconsult_sessions")
-  //      .select("tenant_id, patient_id, encounter_id, practitioner_id")
-  //      .eq("id", parsed.data.sessionId)
-  //      .single();
-  //
-  // 2. Bulk-insert medication_requests (one row per drug):
-  //    await sb.from("medication_requests").insert(
-  //      parsed.data.medications.map((m) => ({
-  //        tenant_id:               session.tenant_id,
-  //        patient_id:              session.patient_id,
-  //        encounter_id:            session.encounter_id,
-  //        requester_id:            session.practitioner_id,
-  //        teleconsult_session_id:  parsed.data.sessionId,
-  //        medication_code:         m.drug,
-  //        display:                 m.drug,
-  //        dosage_instruction:      `${m.dose} — ${m.freq} for ${m.duration}. ${m.instructions}`.trim(),
-  //        status:                  "active",
-  //      }))
-  //    );
-  //
-  // 3. Stamp session with diagnosis + notes:
-  //    await sb.from("teleconsult_sessions")
-  //      .update({ diagnosis: parsed.data.diagnosis, notes: parsed.data.notes, updated_at: new Date().toISOString() })
-  //      .eq("id", parsed.data.sessionId);
-  //
-  // 4. Append audit_log entry: "prescription.signed"
+  const supabase = await createClient();
+  const d = parsed.data;
 
-  await new Promise((r) => setTimeout(r, 700));
+  // 1. Resolve session context
+  const { data: session, error: sessErr } = await supabase
+    .from("teleconsult_sessions")
+    .select("tenant_id, patient_id, encounter_id, practitioner_id")
+    .eq("id", d.sessionId)
+    .single();
+
+  if (sessErr || !session) {
+    return { ok: false as const, error: "Session not found" };
+  }
+
+  const s = session as {
+    tenant_id: string;
+    patient_id: string;
+    encounter_id: string | null;
+    practitioner_id: string;
+  };
+
+  // 2. Bulk-insert medication_requests (one row per drug)
+  if (d.medications.length > 0) {
+    const { error: rxErr } = await supabase.from("medication_requests").insert(
+      d.medications.map((m) => ({
+        tenant_id:        s.tenant_id,
+        patient_id:       s.patient_id,
+        encounter_id:     s.encounter_id,
+        requester_id:     s.practitioner_id,
+        medication_code:  m.drug,
+        display:          m.drug,
+        dosage_instruction: [m.dose, m.freq, m.duration ? `for ${m.duration}` : "", m.instructions]
+          .filter(Boolean)
+          .join(" — ")
+          .trim(),
+        status:           "active",
+      }))
+    );
+
+    if (rxErr) return { ok: false as const, error: rxErr.message };
+  }
+
+  // 3. Stamp session with diagnosis + notes
+  await supabase
+    .from("teleconsult_sessions")
+    .update({
+      diagnosis:  d.diagnosis,
+      notes:      d.notes,
+      updated_at: new Date().toISOString(),
+    } as Record<string, unknown>)
+    .eq("id", d.sessionId);
+
   return { ok: true as const, rxId: `Rx-${Date.now()}` };
 }

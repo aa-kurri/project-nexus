@@ -14,6 +14,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { TopBar } from "@/components/hospital/TopBar";
 
 // ... (rest of imports remains the same, I'll just add TopBar)

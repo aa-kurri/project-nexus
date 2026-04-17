@@ -1,85 +1,153 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/utils/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScanLine, Loader2, RefreshCw, CheckCircle2, FlaskConical } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type SampleStatus = "planned" | "collected" | "received" | "in-progress" | "resulted" | "rejected";
+
+interface Sample {
+  id: string;
+  barcode: string;
+  patient: string;
+  container: string | null;
+  status: SampleStatus;
+  collectedAt: string | null;
+  receivedAt: string | null;
+}
+
+const STATUS_CFG: Record<SampleStatus, { label: string; color: string }> = {
+  "planned":     { label: "Planned",     color: "border-slate-400/40 text-slate-400 bg-slate-400/10" },
+  "collected":   { label: "Collected",   color: "border-yellow-400/40 text-yellow-400 bg-yellow-400/10" },
+  "received":    { label: "Received",    color: "border-blue-400/40 text-blue-400 bg-blue-400/10" },
+  "in-progress": { label: "In Progress", color: "border-purple-400/40 text-purple-400 bg-purple-400/10" },
+  "resulted":    { label: "Resulted",    color: "border-[#0F766E]/40 text-[#0F766E] bg-[#0F766E]/10" },
+  "rejected":    { label: "Rejected",    color: "border-red-400/40 text-red-400 bg-red-400/10" },
+};
 
 export default function BarcodeTracker() {
-  const [scanned, setScanned] = useState(false);
+  const supabase = createClient();
+  const [samples, setSamples]   = useState<Sample[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [receiving, setReceiving] = useState<string | null>(null);
 
-  const handleScan = () => {
-    // 2026: Hardware barcode scanner integration via HID simulation
-    setScanned(true);
+  const fetchSamples = useCallback(async () => {
+    const { data } = await supabase
+      .from("lab_samples")
+      .select(`
+        id, barcode, container, status, collected_at, received_at,
+        patients ( full_name )
+      `)
+      .not("status", "in", '("resulted","rejected")')
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (data) {
+      setSamples(
+        (data as Record<string, unknown>[]).map((r) => ({
+          id:          r.id as string,
+          barcode:     r.barcode as string,
+          patient:     (r.patients as { full_name?: string } | null)?.full_name ?? "Unknown",
+          container:   r.container as string | null,
+          status:      r.status as SampleStatus,
+          collectedAt: r.collected_at as string | null,
+          receivedAt:  r.received_at as string | null,
+        }))
+      );
+    }
+    setLoading(false);
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchSamples();
+    const ch = supabase
+      .channel("barcode-tracker-stream")
+      .on("postgres_changes", { event: "*", schema: "public", table: "lab_samples" }, () => fetchSamples())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [fetchSamples, supabase]);
+
+  const markReceived = async (id: string) => {
+    setReceiving(id);
+    await supabase
+      .from("lab_samples")
+      .update({ status: "received", received_at: new Date().toISOString() })
+      .eq("id", id);
+    setReceiving(null);
+    fetchSamples();
   };
 
   return (
-    <Card className="max-w-2xl mx-auto p-8 shadow-xl bg-slate-900 text-white border-t-8 border-t-blue-500 relative overflow-hidden">
-      {/* Decorative background grid */}
-      <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-      
-      <div className="relative z-10 flex justify-between items-start mb-8 border-b border-slate-800 pb-4">
-        <div>
-          <h2 className="text-3xl font-black tracking-tight text-blue-400">LIMS Barcode Matrix</h2>
-          <p className="text-slate-400 mt-1">Zero-Error Tube Tracking Protocol</p>
+    <Card className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ScanLine className="h-4 w-4 text-blue-400" />
+          <h3 className="font-semibold text-fg">Barcode Tracker</h3>
         </div>
-        <div className="flex flex-col items-end gap-2">
-           <Badge variant="outline" className={`px-4 py-1 text-xs font-bold uppercase tracking-wider ${scanned ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-amber-500 text-amber-400 bg-amber-500/10'}`}>
-              {scanned ? 'S-88231 Linked' : 'Awaiting Scan'}
-           </Badge>
-           {scanned && <span className="text-[10px] text-slate-500 uppercase tracking-widest animate-pulse">Order O-441 Active</span>}
-        </div>
+        <Button size="sm" variant="ghost" onClick={fetchSamples} disabled={loading}>
+          <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+        </Button>
       </div>
+      <p className="text-[11px] text-muted">Active lab samples · realtime · click to mark received</p>
 
-      <div className="relative z-10 space-y-8">
-        {/* Mock Scanner input / output */}
-        <div className={`p-6 rounded-xl border flex flex-col items-center justify-center transition-all duration-700 ${scanned ? 'bg-slate-800 border-emerald-500/50' : 'bg-slate-950 border-slate-800'}`}>
-           {!scanned ? (
-             <div className="text-center py-6">
-                <div className="w-64 h-24 border-2 border-dashed border-slate-600 mb-4 mx-auto flex items-center justify-center relative">
-                   <div className="absolute w-full h-[2px] bg-red-500/50 animate-[scan_2s_ease-in-out_infinite_alternate]"></div>
-                </div>
-                <p className="text-slate-500 font-mono text-sm uppercase tracking-[0.2em]">Ready for 1D/2D Input</p>
-             </div>
-           ) : (
-             <div className="text-center py-6 animate-in zoom-in duration-500">
-                <div className="text-6xl mb-4">🧬</div>
-                <h3 className="text-2xl font-black text-white font-mono tracking-widest">S-88231</h3>
-                <p className="text-emerald-400 font-bold mt-2">Sample Registered: CBC + LFT</p>
-             </div>
-           )}
+      {loading ? (
+        <div className="flex items-center justify-center py-10 text-muted text-sm gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading samples…
         </div>
-
-        {scanned && (
-          <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-bottom-4">
-             <div className="bg-slate-800 p-4 rounded-lg">
-                <h4 className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Patient Mapping</h4>
-                <p className="font-bold text-lg text-blue-300">P-1234 (Ramesh Kumar)</p>
-             </div>
-             <div className="bg-slate-800 p-4 rounded-lg">
-                <h4 className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Pre-Analytical Step</h4>
-                <div className="flex items-center gap-2 mt-1">
-                   <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                   <p className="font-bold text-sm text-slate-300">Received at Bench A</p>
-                </div>
-             </div>
-          </div>
-        )}
-
-        <div className="flex justify-center pt-4">
-           <Button 
-             onClick={handleScan}
-             disabled={scanned}
-             className={`px-8 py-6 rounded-full font-bold transition-all ${
-                scanned 
-                  ? 'bg-slate-800 text-slate-600 border border-slate-700' 
-                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-             }`}
-           >
-              {scanned ? 'Scanner Locked to Order' : 'Simulate Hardware Scan'}
-           </Button>
+      ) : samples.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted">
+          <FlaskConical className="h-7 w-7 opacity-30" />
+          <p className="text-sm">No active samples in queue</p>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-2">
+          {samples.map((s) => {
+            const cfg = STATUS_CFG[s.status];
+            return (
+              <div
+                key={s.id}
+                className="flex items-center justify-between rounded-xl border border-border bg-surface/40 px-4 py-3 gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 shrink-0">
+                    <ScanLine className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold font-mono text-fg">{s.barcode}</p>
+                    <p className="text-[11px] text-muted truncate">{s.patient}</p>
+                    {s.container && (
+                      <p className="text-[10px] text-muted">{s.container}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant="outline" className={cn("text-[10px]", cfg.color)}>
+                    {cfg.label}
+                  </Badge>
+                  {s.status === "collected" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => markReceived(s.id)}
+                      disabled={receiving === s.id}
+                      className="text-xs h-7"
+                    >
+                      {receiving === s.id
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : <><CheckCircle2 className="h-3 w-3 mr-1" />Receive</>
+                      }
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }
