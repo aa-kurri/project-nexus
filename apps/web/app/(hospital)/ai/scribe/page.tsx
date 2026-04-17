@@ -14,7 +14,8 @@ import {
   FileText,
   Volume2,
   BrainCircuit,
-  Maximize2
+  Maximize2,
+  ArrowUpRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

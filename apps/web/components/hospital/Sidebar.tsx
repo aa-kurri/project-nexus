@@ -31,42 +31,54 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { label: "OPD Queue",   href: "/opd/queue",        icon: Activity,
-    children: [{ label: "New Patient", href: "/opd/new-patient" }] },
-  { label: "IPD",          href: "/ipd/beds",           icon: BedDouble,
+  { label: "OPD",          href: "/opd",              icon: Activity,
+    children: [
+      { label: "Queue",          href: "/opd/queue" },
+      { label: "New Patient",    href: "/opd/new-patient" }
+    ]},
+  { label: "IPD",          href: "/ipd",           icon: BedDouble,
     children: [
       { label: "Bed Board",      href: "/ipd/beds" },
       { label: "Dashboard",      href: "/ipd/dashboard" },
       { label: "Nurse Station",  href: "/ipd/nurse-station" },
     ]},
-  { label: "Patients",    href: "/emr/patients",      icon: Users },
-  { label: "Pharmacy",    href: "/pharmacy/stock",    icon: Pill,
+  { label: "EMR",         href: "/emr",              icon: Users,
     children: [
+      { label: "Patients",    href: "/emr/patients" },
+      { label: "Case Files",   href: "/emr/case-files" },
+    ]},
+  { label: "Pharmacy",    href: "/pharmacy",         icon: Pill,
+    children: [
+      { label: "Stock",       href: "/pharmacy/stock" },
       { label: "Transfers",   href: "/pharmacy/transfers" },
       { label: "Auto PO",     href: "/pharmacy/orders" },
       { label: "Dispense",    href: "/pharmacy/dispense" },
     ]},
-  { label: "LIMS",        href: "/lims/worklist",     icon: FlaskConical,
-    children: [{ label: "HL7 Feed", href: "/lims/hl7" }] },
-  { label: "Billing",     href: "/billing/claims",    icon: Receipt,
+  { label: "LIMS",        href: "/lims",             icon: FlaskConical,
+    children: [
+      { label: "Worklist",  href: "/lims/worklist" },
+      { label: "HL7 Feed",  href: "/lims/hl7" },
+      { label: "Dashboard", href: "/lims/dashboard" },
+    ]},
+  { label: "Billing",     href: "/billing",          icon: Receipt,
     children: [
       { label: "Claims",    href: "/billing/claims" },
       { label: "Payments",  href: "/billing/payments" },
       { label: "Pre-Auth",  href: "/billing/preauth" },
     ]},
-  { label: "Analytics",   href: "/analytics/pharmacy", icon: TrendingUp,
+  { label: "Analytics",   href: "/analytics",        icon: TrendingUp,
     children: [
       { label: "Pharmacy",  href: "/analytics/pharmacy" },
       { label: "MIS Report", href: "/analytics/mis" },
     ]},
-  { label: "Stores",      href: "/stores/stock",      icon: Package,
+  { label: "Stores",      href: "/stores",           icon: Package,
     children: [
-      { label: "Stock Adjustment", href: "/stores/stock" },
+      { label: "Stock",            href: "/stores/stock" },
       { label: "Transfers",        href: "/stores/transfer" },
       { label: "Purchase Orders",  href: "/stores/purchase-orders" },
       { label: "Suppliers",        href: "/stores/suppliers" },
     ]},
-  { label: "Admin",       href: "/admin/services",    icon: SlidersHorizontal,
+  { label: "Admin",       href: "/admin",            icon: SlidersHorizontal,
     children: [
       { label: "Services Master",  href: "/admin/services" },
       { label: "Tariff Master",    href: "/admin/tariff" },
