@@ -13,18 +13,25 @@ import {
   SkipForward,
 } from "lucide-react";
 
+// ── Types matching queue_tokens schema ──────────────────────────────────────
+
+type QueueStatus = "waiting" | "next" | "in-consult" | "done" | "no-show";
+
 type QueueEntry = {
   id: string;
-  token_number: string;
-  room: string;
-  doctor_name?: string;
-  status: "waiting" | "consulting" | "completed" | "skipped";
+  token_number: number;
+  practitioner_id: string;
+  patient_id: string;
+  status: QueueStatus;
   created_at: string;
+  called_at: string | null;
+  // joined
+  doctor_name?: string;
   patient_name?: string;
 };
 
 type DoctorLane = {
-  room: string;
+  practitioner_id: string;
   doctor: string;
   current: QueueEntry | null;
   waiting: QueueEntry[];
@@ -36,12 +43,35 @@ export default function LiveQueueBoard() {
   const [now, setNow] = useState(new Date());
 
   const fetchQueue = useCallback(async () => {
+    const today = new Date().toISOString().split("T")[0];
+
     const { data } = await supabase
-      .from("opd_queue")
-      .select("*")
-      .neq("status", "completed")
-      .order("created_at", { ascending: true });
-    if (data) setQueue(data as QueueEntry[]);
+      .from("queue_tokens")
+      .select(`
+        id, token_number, practitioner_id, patient_id,
+        status, created_at, called_at,
+        patients ( full_name ),
+        profiles ( full_name )
+      `)
+      .eq("token_date", today)
+      .not("status", "in", '("done","no-show")')
+      .order("token_number", { ascending: true });
+
+    if (data) {
+      setQueue(
+        (data as Record<string, unknown>[]).map((r) => ({
+          id: r.id as string,
+          token_number: r.token_number as number,
+          practitioner_id: r.practitioner_id as string,
+          patient_id: r.patient_id as string,
+          status: r.status as QueueStatus,
+          created_at: r.created_at as string,
+          called_at: r.called_at as string | null,
+          doctor_name: (r.profiles as { full_name?: string } | null)?.full_name,
+          patient_name: (r.patients as { full_name?: string } | null)?.full_name,
+        }))
+      );
+    }
   }, [supabase]);
 
   useEffect(() => {
@@ -50,7 +80,7 @@ export default function LiveQueueBoard() {
       .channel("opd-live-stream")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "opd_queue" },
+        { event: "*", schema: "public", table: "queue_tokens" },
         () => fetchQueue()
       )
       .subscribe();
@@ -62,73 +92,101 @@ export default function LiveQueueBoard() {
     };
   }, [fetchQueue, supabase]);
 
-  const callNext = async (room: string) => {
-    const nextWaiting = queue.find(
-      (q) => q.room === room && q.status === "waiting"
+  const callNext = async (practitioner_id: string) => {
+    const current = queue.find(
+      (q) => q.practitioner_id === practitioner_id && q.status === "in-consult"
     );
-    const currentConsulting = queue.find(
-      (q) => q.room === room && q.status === "consulting"
+    const next = queue.find(
+      (q) =>
+        q.practitioner_id === practitioner_id &&
+        (q.status === "waiting" || q.status === "next")
     );
-    if (currentConsulting) {
+    if (current) {
       await supabase
-        .from("opd_queue")
-        .update({ status: "completed" })
-        .eq("id", currentConsulting.id);
+        .from("queue_tokens")
+        .update({ status: "done" })
+        .eq("id", current.id);
     }
-    if (nextWaiting) {
+    if (next) {
       await supabase
-        .from("opd_queue")
-        .update({ status: "consulting" })
-        .eq("id", nextWaiting.id);
+        .from("queue_tokens")
+        .update({ status: "in-consult", called_at: new Date().toISOString() })
+        .eq("id", next.id);
     }
     fetchQueue();
   };
 
   const skipToken = async (id: string) => {
     await supabase
-      .from("opd_queue")
-      .update({ status: "skipped" })
+      .from("queue_tokens")
+      .update({ status: "no-show" })
       .eq("id", id);
     fetchQueue();
   };
 
+  // Demo helper — inserts a real token if a tenant row exists
   const pingMock = async () => {
-    const { data } = await supabase
+    const { data: tenant } = await supabase
       .from("tenants")
       .select("id")
       .limit(1)
       .single();
-    if (data) {
-      const rooms = ["Room 1", "Room 2", "Room 3"];
-      const doctors = ["Dr. Sharma", "Dr. Patel", "Dr. Rao"];
-      const idx = Math.floor(Math.random() * 3);
-      await supabase.from("opd_queue").insert([
-        {
-          tenant_id: data.id,
-          token_number: "OPD-" + String(Math.floor(Math.random() * 999)).padStart(3, "0"),
-          room: rooms[idx],
-          doctor_name: doctors[idx],
-          patient_name: ["Rakesh M.", "Priya S.", "Arun K.", "Sunita R."][Math.floor(Math.random() * 4)],
-          status: "waiting",
-        },
-      ]);
-    }
+
+    if (!tenant) return;
+
+    const { data: doctors } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .eq("role", "doctor")
+      .eq("tenant_id", tenant.id)
+      .limit(3);
+
+    const { data: patients } = await supabase
+      .from("patients")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .limit(10);
+
+    if (!doctors?.length || !patients?.length) return;
+
+    const doc = doctors[Math.floor(Math.random() * doctors.length)];
+    const pat = patients[Math.floor(Math.random() * patients.length)];
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data: maxRow } = await supabase
+      .from("queue_tokens")
+      .select("token_number")
+      .eq("tenant_id", tenant.id)
+      .eq("practitioner_id", doc.id)
+      .eq("token_date", today)
+      .order("token_number", { ascending: false })
+      .limit(1)
+      .single();
+
+    await supabase.from("queue_tokens").insert({
+      tenant_id: tenant.id,
+      practitioner_id: doc.id,
+      patient_id: pat.id,
+      token_number: ((maxRow?.token_number ?? 0) as number) + 1,
+      token_date: today,
+      status: "waiting",
+    });
   };
 
   // Build doctor lanes
-  const rooms = Array.from(new Set(queue.map((q) => q.room))).sort();
-  const lanes: DoctorLane[] = rooms.map((room) => {
-    const roomEntries = queue.filter((q) => q.room === room);
+  const practIds = Array.from(new Set(queue.map((q) => q.practitioner_id)));
+  const lanes: DoctorLane[] = practIds.map((pid) => {
+    const entries = queue.filter((q) => q.practitioner_id === pid);
     return {
-      room,
-      doctor: roomEntries[0]?.doctor_name ?? room,
-      current: roomEntries.find((q) => q.status === "consulting") ?? null,
-      waiting: roomEntries.filter((q) => q.status === "waiting"),
+      practitioner_id: pid,
+      doctor: entries[0]?.doctor_name ?? `Dr. ${pid.slice(0, 6)}`,
+      current: entries.find((q) => q.status === "in-consult") ?? null,
+      waiting: entries.filter((q) => q.status === "waiting" || q.status === "next"),
     };
   });
 
-  const totalWaiting = queue.filter((q) => q.status === "waiting").length;
-  const totalConsulting = queue.filter((q) => q.status === "consulting").length;
+  const totalWaiting = queue.filter((q) => q.status === "waiting" || q.status === "next").length;
+  const totalConsulting = queue.filter((q) => q.status === "in-consult").length;
 
   return (
     <div className="min-h-screen bg-[hsl(220_15%_6%)] text-white">
@@ -151,7 +209,6 @@ export default function LiveQueueBoard() {
         </div>
 
         <div className="flex items-center gap-6">
-          {/* Stats pills */}
           <div className="flex gap-3">
             <StatPill label="Waiting" value={totalWaiting} color="yellow" icon={Clock} />
             <StatPill label="In Room" value={totalConsulting} color="teal" icon={PhoneCall} />
@@ -178,16 +235,15 @@ export default function LiveQueueBoard() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {lanes.map((lane) => (
               <DoctorLaneCard
-                key={lane.room}
+                key={lane.practitioner_id}
                 lane={lane}
-                onCallNext={() => callNext(lane.room)}
+                onCallNext={() => callNext(lane.practitioner_id)}
                 onSkip={skipToken}
               />
             ))}
           </div>
         )}
 
-        {/* Global waiting list */}
         {totalWaiting > 0 && (
           <div className="mt-8">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
@@ -195,7 +251,7 @@ export default function LiveQueueBoard() {
             </h2>
             <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 xl:grid-cols-10 gap-3">
               {queue
-                .filter((q) => q.status === "waiting")
+                .filter((q) => q.status === "waiting" || q.status === "next")
                 .map((q) => (
                   <TokenChip key={q.id} entry={q} />
                 ))}
@@ -220,12 +276,10 @@ function DoctorLaneCard({
 }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] flex flex-col overflow-hidden">
-      {/* Lane header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/8 bg-black/20">
         <div>
           <p className="text-[10px] uppercase tracking-widest text-slate-500">Doctor Lane</p>
           <p className="font-bold text-sm mt-0.5">{lane.doctor}</p>
-          <p className="text-[11px] text-slate-400">{lane.room}</p>
         </div>
         <div className="text-right">
           <p className="text-[10px] uppercase tracking-widest text-slate-500">Waiting</p>
@@ -233,16 +287,15 @@ function DoctorLaneCard({
         </div>
       </div>
 
-      {/* Currently consulting */}
       <div className="px-5 py-4 border-b border-white/8">
         <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-3">Now Consulting</p>
         {lane.current ? (
           <div className="flex items-center gap-4 bg-[#0F766E]/10 border border-[#0F766E]/30 rounded-xl p-4">
             <div className="h-14 w-14 rounded-xl bg-[#0F766E] flex items-center justify-center shrink-0">
-              <span className="text-xl font-black">{lane.current.token_number.split("-")[1] ?? lane.current.token_number}</span>
+              <span className="text-xl font-black">{lane.current.token_number}</span>
             </div>
             <div className="min-w-0">
-              <p className="font-bold text-white truncate">{lane.current.token_number}</p>
+              <p className="font-bold text-white truncate">Token #{lane.current.token_number}</p>
               {lane.current.patient_name && (
                 <p className="text-xs text-slate-400 truncate">{lane.current.patient_name}</p>
               )}
@@ -259,7 +312,6 @@ function DoctorLaneCard({
         )}
       </div>
 
-      {/* Next in queue */}
       <div className="px-5 py-4 flex-1">
         <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-3">Up Next</p>
         <div className="space-y-2">
@@ -287,7 +339,7 @@ function DoctorLaneCard({
                     "font-mono font-bold text-sm",
                     i === 0 ? "text-white" : "text-slate-400"
                   )}>
-                    {q.token_number}
+                    #{q.token_number}
                   </span>
                   {q.patient_name && (
                     <span className="text-xs text-slate-600 truncate max-w-[80px]">{q.patient_name}</span>
@@ -296,7 +348,7 @@ function DoctorLaneCard({
                 <button
                   onClick={() => onSkip(q.id)}
                   className="p-1 text-slate-600 hover:text-slate-300 transition-colors"
-                  title="Skip token"
+                  title="Mark no-show"
                 >
                   <SkipForward className="h-3 w-3" />
                 </button>
@@ -311,7 +363,6 @@ function DoctorLaneCard({
         </div>
       </div>
 
-      {/* Call next action */}
       <div className="px-5 py-4 border-t border-white/8">
         <button
           onClick={onCallNext}
@@ -338,11 +389,13 @@ function TokenChip({ entry }: { entry: QueueEntry }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl border border-white/8 bg-white/[0.02] p-3 text-center">
       <span className="text-base font-bold font-mono text-slate-200">
-        {entry.token_number.split("-")[1] ?? entry.token_number}
+        #{entry.token_number}
       </span>
-      <span className="text-[9px] text-slate-600 truncate w-full text-center uppercase tracking-wider">
-        {entry.room.replace("Room ", "R")}
-      </span>
+      {entry.patient_name && (
+        <span className="text-[9px] text-slate-600 truncate w-full text-center">
+          {entry.patient_name.split(" ")[0]}
+        </span>
+      )}
     </div>
   );
 }
