@@ -14,11 +14,10 @@ import {
   ChevronRight,
   TrendingUp,
   Receipt,
-  FileBarChart2,
-  MessageSquare,
-  ShieldCheck,
   ChevronDown,
   LogOut,
+  Package,
+  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useTransition } from "react";
@@ -50,11 +49,29 @@ const NAV: NavItem[] = [
   { label: "LIMS",        href: "/lims/worklist",     icon: FlaskConical,
     children: [{ label: "HL7 Feed", href: "/lims/hl7" }] },
   { label: "Billing",     href: "/billing/claims",    icon: Receipt,
-    children: [{ label: "Claims",   href: "/billing/claims" }] },
+    children: [
+      { label: "Claims",    href: "/billing/claims" },
+      { label: "Payments",  href: "/billing/payments" },
+      { label: "Pre-Auth",  href: "/billing/preauth" },
+    ]},
   { label: "Analytics",   href: "/analytics/pharmacy", icon: TrendingUp,
     children: [
       { label: "Pharmacy",  href: "/analytics/pharmacy" },
       { label: "MIS Report", href: "/analytics/mis" },
+    ]},
+  { label: "Stores",      href: "/stores/stock",      icon: Package,
+    children: [
+      { label: "Stock Adjustment", href: "/stores/stock" },
+      { label: "Transfers",        href: "/stores/transfer" },
+      { label: "Purchase Orders",  href: "/stores/purchase-orders" },
+      { label: "Suppliers",        href: "/stores/suppliers" },
+    ]},
+  { label: "Admin",       href: "/admin/services",    icon: SlidersHorizontal,
+    children: [
+      { label: "Services Master",  href: "/admin/services" },
+      { label: "Tariff Master",    href: "/admin/tariff" },
+      { label: "Configuration",    href: "/admin/config" },
+      { label: "Auth Inpatient",   href: "/admin/auth-ip" },
     ]},
   { label: "AI Scribe",   href: "/ai/scribe",         icon: Mic2 },
   { label: "Settings",    href: "/settings",          icon: Settings,

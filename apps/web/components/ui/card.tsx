@@ -21,3 +21,6 @@ export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLDivE
 export function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return <p className={cn("text-sm text-muted", className)} {...props} />;
 }
+export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("", className)} {...props} />;
+}

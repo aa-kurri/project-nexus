@@ -2,18 +2,13 @@
 import React, { useState } from "react";
 import { TopBar } from "@/components/hospital/TopBar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { 
-  Users, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Wallet, 
-  Activity, 
-  BedDouble, 
-  FlaskConical, 
+import {
+  Users,
+  Activity,
+  BedDouble,
   Pill,
   BarChart3,
   PieChart as PieIcon,
-  Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -125,6 +120,17 @@ function SummaryView() {
 }
 
 function OpView() {
+  const dailyOp = [
+    { day: "Mon", new: 8,  old: 14 },
+    { day: "Tue", new: 12, old: 18 },
+    { day: "Wed", new: 10, old: 22 },
+    { day: "Thu", new: 15, old: 20 },
+    { day: "Fri", new: 13, old: 22 },
+    { day: "Sat", new: 18, old: 28 },
+    { day: "Sun", new: 5,  old: 10 },
+  ];
+  const maxVal = Math.max(...dailyOp.flatMap((d) => [d.new, d.old]));
+
   return (
     <div className="animate-in fade-in duration-500 space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
@@ -133,15 +139,47 @@ function OpView() {
         <StatCard title="Follow Ups" value="20" change="-1%" positive={false} />
         <StatCard title="OP Conversion" value="12%" change="+2%" positive />
       </div>
-      {/* Charts placeholder */}
-      <Card className="h-64 border-dashed border-border/40 bg-surface/20 flex items-center justify-center">
-        <p className="text-muted text-sm italic">OP Appointment & Revenue Trends Loading...</p>
+      <Card className="border-border/40 bg-surface/50 backdrop-blur-xl">
+        <CardHeader><CardTitle className="text-sm">Daily OP Patient Volume (This Week)</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-4 h-48 pt-4">
+            {dailyOp.map((d) => (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full flex items-end gap-1 h-36">
+                  <div
+                    className="flex-1 rounded-t-sm bg-[#0F766E] transition-all duration-700"
+                    style={{ height: `${(d.new / maxVal) * 100}%` }}
+                    title={`New: ${d.new}`}
+                  />
+                  <div
+                    className="flex-1 rounded-t-sm bg-blue-500/60 transition-all duration-700"
+                    style={{ height: `${(d.old / maxVal) * 100}%` }}
+                    title={`Old: ${d.old}`}
+                  />
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono">{d.day}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-6 mt-4">
+            <div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-sm bg-[#0F766E]" /><span className="text-xs text-slate-500">New Patients</span></div>
+            <div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-sm bg-blue-500/60" /><span className="text-xs text-slate-500">Return Patients</span></div>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );
 }
 
 function IpView() {
+  const occupancy = [
+    { ward: "General (M)", total: 20, occupied: 15 },
+    { ward: "General (F)", total: 16, occupied: 10 },
+    { ward: "ICU",         total: 8,  occupied: 7  },
+    { ward: "HDU",         total: 6,  occupied: 4  },
+    { ward: "Private",     total: 5,  occupied: 3  },
+  ];
+
   return (
     <div className="animate-in fade-in duration-500 space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -150,26 +188,76 @@ function IpView() {
         <StatCard title="Discharges" value="3" change="Steady" neutral />
         <StatCard title="Avg stay" value="7 Days" change="-1 Day" positive />
       </div>
-      <Card className="h-64 border-dashed border-border/40 bg-surface/20 flex items-center justify-center">
-        <p className="text-muted text-sm italic">Occupancy Heatmap & Billing Breakdown...</p>
+      <Card className="border-border/40 bg-surface/50 backdrop-blur-xl">
+        <CardHeader><CardTitle className="text-sm">Ward Occupancy</CardTitle></CardHeader>
+        <CardContent className="space-y-4 pb-4">
+          {occupancy.map((w) => {
+            const pct = Math.round((w.occupied / w.total) * 100);
+            return (
+              <div key={w.ward} className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400 font-medium">{w.ward}</span>
+                  <span className="font-mono text-slate-300">
+                    {w.occupied}/{w.total} <span className="text-slate-600">({pct}%)</span>
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-1000",
+                      pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-yellow-500" : "bg-[#0F766E]"
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
       </Card>
     </div>
   );
 }
 
 function CasualtyView() {
+  const hourlyER = [4, 7, 3, 2, 1, 2, 5, 9, 12, 8, 6, 7, 10, 11, 8, 6, 9, 13, 15, 11, 8, 6, 5, 3];
+  const maxER = Math.max(...hourlyER);
+
   return (
     <div className="animate-in fade-in duration-500 space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard title="ER Visits Today" value="47" change="+8%" positive />
+        <StatCard title="Avg Wait Time" value="18 min" change="-3 min" positive />
+        <StatCard title="Admissions from ER" value="6" change="13% conv." neutral />
+        <StatCard title="ER Revenue" value="₹38,400" change="+11%" positive />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-border/40 bg-surface/50">
           <CardHeader><CardTitle className="text-sm">ER Revenue by Service</CardTitle></CardHeader>
-          <CardContent className="space-y-6 pt-4">
-             <PaymentBar label="Procedure Charges" amount="₹12,400" percentage={55} color="bg-purple-500" />
-             <PaymentBar label="Bed Charges" amount="₹8,200" percentage={45} color="bg-blue-500" />
+          <CardContent className="space-y-4 pb-4">
+            <PaymentBar label="Procedure Charges" amount="₹12,400" percentage={55} color="bg-purple-500" />
+            <PaymentBar label="Bed Charges"        amount="₹8,200"  percentage={45} color="bg-blue-500" />
+            <PaymentBar label="Lab / Investigations" amount="₹11,000" percentage={38} color="bg-[#0F766E]" />
+            <PaymentBar label="Medication"          amount="₹6,800"  percentage={30} color="bg-orange-500" />
           </CardContent>
         </Card>
-        <Card className="h-64 border-dashed border-border/40 bg-surface/20 flex items-center justify-center">
-          <p className="text-muted text-sm italic">Casualty Wait-Time Analytics...</p>
+        <Card className="border-border/40 bg-surface/50">
+          <CardHeader><CardTitle className="text-sm">Hourly ER Arrivals (Today)</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-0.5 h-32">
+              {hourlyER.map((v, i) => (
+                <div
+                  key={i}
+                  className="flex-1 rounded-t-sm bg-purple-500/60 hover:bg-purple-400 transition-colors"
+                  style={{ height: `${(v / maxER) * 100}%` }}
+                  title={`${i}:00 — ${v} patients`}
+                />
+              ))}
+            </div>
+            <div className="flex justify-between text-[10px] text-slate-600 mt-1 font-mono">
+              <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>
