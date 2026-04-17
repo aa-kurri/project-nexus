@@ -4,7 +4,7 @@ import {
   List, Users, Mic, Pill,
   LayoutDashboard, Bed, CreditCard, UserCog,
   CheckSquare, Thermometer, Package, FlaskConical,
-  MoreHorizontal,
+  MoreHorizontal, ClipboardList, Stethoscope,
 } from "lucide-react-native";
 import { useAuthStore } from "../../store/authStore";
 
@@ -115,6 +115,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="cpoe/index"
+        options={{
+          title: "Orders",
+          href:  hide(!isDoctor),
+          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size - 2} />,
+        }}
+      />
+      <Tabs.Screen
         name="rx/index"
         options={{
           title: "Rx",
@@ -185,6 +193,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="mar/index"
+        options={{
+          title: "MAR",
+          href:  hide(!isStaff),
+          tabBarIcon: ({ color, size }) => <Pill color={color} size={size - 2} />,
+        }}
+      />
+      <Tabs.Screen
         name="lab/index"
         options={{
           title: "Lab",
@@ -202,6 +218,17 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <MoreHorizontal color={color} size={size - 2} />,
         }}
       />
+
+      {/* ── New screens — navigable from More, not top-level tabs ─────────── */}
+      <Tabs.Screen name="icu/index"             options={{ href: null }} />
+      <Tabs.Screen name="ot/checklist"          options={{ href: null }} />
+      <Tabs.Screen name="compliance/abha"       options={{ href: null }} />
+      <Tabs.Screen name="compliance/pmjay"      options={{ href: null }} />
+      <Tabs.Screen name="antibiogram/index"     options={{ href: null }} />
+      <Tabs.Screen name="schedules/index"       options={{ href: null }} />
+      <Tabs.Screen name="audit/index"           options={{ href: null }} />
+      <Tabs.Screen name="tpa/index"             options={{ href: null }} />
+      <Tabs.Screen name="nabh/index"            options={{ href: null }} />
 
       {/* ── sub-routes that must not appear as tabs ───────────────────────── */}
       <Tabs.Screen name="reports/[id]"          options={{ href: null }} />

@@ -3,6 +3,8 @@ import { useRouter } from "expo-router";
 import {
   Settings2, LogOut, Bell, HelpCircle, Shield,
   ChevronRight, User,
+  Activity, Scissors, ShieldCheck, FlaskConical,
+  Pill, TrendingUp, CreditCard, Star,
 } from "lucide-react-native";
 import { supabase } from "../../../lib/supabase";
 import { useAuthStore } from "../../../store/authStore";
@@ -43,6 +45,53 @@ type MenuItem = {
   action?: () => void;
 };
 
+function MenuSection({ title, items }: { title: string; items: MenuItem[] }) {
+  const router = useRouter();
+  if (items.length === 0) return null;
+  return (
+    <>
+      <Text style={{ color: "#4b5563", fontSize: 11, fontWeight: "700",
+        textTransform: "uppercase", letterSpacing: 0.5,
+        marginHorizontal: 20, marginTop: 20, marginBottom: 8 }}>
+        {title}
+      </Text>
+      <View style={{ marginHorizontal: 16, borderRadius: 16,
+        backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, overflow: "hidden" }}>
+        {items.map((item, i) => (
+          <Pressable
+            key={item.key}
+            onPress={item.action ?? (item.route ? () => router.push(item.route as never) : undefined)}
+            style={({ pressed }) => ({
+              flexDirection: "row", alignItems: "center",
+              paddingHorizontal: 16, paddingVertical: 14,
+              borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 10,
+              backgroundColor: `${item.color}20`, alignItems: "center",
+              justifyContent: "center", marginRight: 14 }}>
+              <item.Icon size={18} color={item.color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                color: item.key === "sign-out" ? "#f87171" : "#f9fafb",
+                fontWeight: "600",
+              }}>
+                {item.label}
+              </Text>
+              {item.sub && (
+                <Text style={{ color: "#4b5563", fontSize: 12, marginTop: 2 }}>{item.sub}</Text>
+              )}
+            </View>
+            {item.key !== "sign-out" && <ChevronRight size={16} color="#374151" />}
+          </Pressable>
+        ))}
+      </View>
+    </>
+  );
+}
+
 export default function MoreScreen() {
   const router     = useRouter();
   const profile    = useAuthStore((s) => s.profile);
@@ -55,51 +104,55 @@ export default function MoreScreen() {
     router.replace("/login");
   };
 
-  // Admin-only item: Feature Flags
-  const adminItems: MenuItem[] = mobileRole === "admin" ? [
-    {
-      key:   "feature-flags",
-      label: "Feature Flags",
-      sub:   "Role × feature matrix",
-      Icon:  Settings2,
-      color: "#8b5cf6",
-      route: "/(tabs)/admin/feature-flags",
-    },
+  const isDoctor  = mobileRole === "doctor";
+  const isAdmin   = mobileRole === "admin";
+  const isStaff   = mobileRole === "staff";
+
+  // Clinical tools — doctor & staff
+  const clinicalItems: MenuItem[] = [
+    ...(isStaff ? [
+      { key: "icu",    label: "ICU Flowsheet",    sub: "Live vitals, vent params, fluid balance", Icon: Activity,   color: "#ef4444",  route: "/(tabs)/icu/index"         },
+      { key: "ot",     label: "OT WHO Checklist", sub: "Sign-in · Time-out · Sign-out",            Icon: Scissors,   color: "#f59e0b",  route: "/(tabs)/ot/checklist"      },
+    ] : []),
+    ...(isDoctor ? [
+      { key: "icu-dr", label: "ICU Flowsheet",    sub: "Patient monitoring & scores",              Icon: Activity,   color: "#ef4444",  route: "/(tabs)/icu/index"         },
+      { key: "ot-dr",  label: "OT WHO Checklist", sub: "WHO surgical safety checklist",            Icon: Scissors,   color: "#f59e0b",  route: "/(tabs)/ot/checklist"      },
+      { key: "anti",   label: "Antibiogram",      sub: "Organism susceptibility matrix",           Icon: FlaskConical,color: "#6366f1", route: "/(tabs)/antibiogram/index" },
+    ] : []),
+    ...(isStaff ? [
+      { key: "anti-st",label: "Antibiogram",      sub: "Reference: S/I/R by organism",             Icon: FlaskConical,color: "#6366f1", route: "/(tabs)/antibiogram/index" },
+      { key: "sched",  label: "Drug Schedules",   sub: "H / H1 / X dispensing compliance",         Icon: Pill,       color: "#a78bfa",  route: "/(tabs)/schedules/index"   },
+    ] : []),
+  ];
+
+  // Compliance — staff & admin
+  const complianceItems: MenuItem[] = [
+    ...((isStaff || isAdmin) ? [
+      { key: "abha",   label: "ABHA Linking",     sub: "ABDM patient consent & linking",           Icon: ShieldCheck,color: PRIMARY,   route: "/(tabs)/compliance/abha"   },
+    ] : []),
+    ...(isAdmin ? [
+      { key: "pmjay",  label: "PMJAY Claims",     sub: "Ayushman Bharat claim tracker",            Icon: ShieldCheck,color: "#3b82f6", route: "/(tabs)/compliance/pmjay"  },
+      { key: "nabh",   label: "NABH Score Card",  sub: "Chapter-wise compliance overview",         Icon: Star,       color: "#f59e0b",  route: "/(tabs)/nabh/index"        },
+    ] : []),
+  ];
+
+  // Finance / billing — admin
+  const financeItems: MenuItem[] = isAdmin ? [
+    { key: "tpa",    label: "TPA Cashless",      sub: "Cashless case pipeline & enhancement",     Icon: CreditCard,  color: "#06b6d4", route: "/(tabs)/tpa/index"         },
+    { key: "audit",  label: "Revenue Audit",     sub: "Flagged billing leakage items",            Icon: TrendingUp,  color: "#ef4444", route: "/(tabs)/audit/index"       },
   ] : [];
 
-  const items: MenuItem[] = [
-    ...adminItems,
-    {
-      key:   "notifications",
-      label: "Notifications",
-      sub:   "Alert preferences",
-      Icon:  Bell,
-      color: "#f59e0b",
-      // TODO: route to notifications settings screen
-    },
-    {
-      key:   "privacy",
-      label: "Privacy & Security",
-      sub:   "Session, data, 2FA",
-      Icon:  Shield,
-      color: PRIMARY,
-      // TODO: route to security screen
-    },
-    {
-      key:   "help",
-      label: "Help & Support",
-      sub:   "FAQ, contact us",
-      Icon:  HelpCircle,
-      color: "#6366f1",
-      // TODO: route to help screen / open URL
-    },
-    {
-      key:    "sign-out",
-      label:  "Sign Out",
-      Icon:   LogOut,
-      color:  "#ef4444",
-      action: handleSignOut,
-    },
+  // Admin tools
+  const adminItems: MenuItem[] = isAdmin ? [
+    { key: "feature-flags", label: "Feature Flags", sub: "Role × feature matrix", Icon: Settings2, color: "#8b5cf6", route: "/(tabs)/admin/feature-flags" },
+  ] : [];
+
+  // General
+  const generalItems: MenuItem[] = [
+    { key: "notifications", label: "Notifications",      sub: "Alert preferences",      Icon: Bell,       color: "#f59e0b" },
+    { key: "privacy",       label: "Privacy & Security", sub: "Session, data, 2FA",     Icon: Shield,     color: PRIMARY  },
+    { key: "help",          label: "Help & Support",     sub: "FAQ, contact us",         Icon: HelpCircle, color: "#6366f1"},
+    { key: "sign-out",      label: "Sign Out",           Icon: LogOut,                   color: "#ef4444", action: handleSignOut },
   ];
 
   const roleColor = ROLE_COLOR[profile?.role ?? mobileRole] ?? PRIMARY;
@@ -107,7 +160,7 @@ export default function MoreScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: BG }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: 48 }}
     >
       {/* Profile card */}
       <View style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24 }}>
@@ -135,42 +188,11 @@ export default function MoreScreen() {
         </View>
       </View>
 
-      {/* Menu items */}
-      <View style={{ marginHorizontal: 16, borderRadius: 16,
-        backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, overflow: "hidden" }}>
-        {items.map((item, i) => (
-          <Pressable
-            key={item.key}
-            onPress={item.action ?? (item.route ? () => router.push(item.route as never) : undefined)}
-            style={({ pressed }) => ({
-              flexDirection: "row", alignItems: "center",
-              paddingHorizontal: 16, paddingVertical: 16,
-              borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER,
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 10,
-              backgroundColor: `${item.color}20`, alignItems: "center",
-              justifyContent: "center", marginRight: 14 }}>
-              <item.Icon size={18} color={item.color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{
-                color: item.key === "sign-out" ? "#f87171" : "#f9fafb",
-                fontWeight: "600",
-              }}>
-                {item.label}
-              </Text>
-              {item.sub && (
-                <Text style={{ color: "#4b5563", fontSize: 12, marginTop: 2 }}>{item.sub}</Text>
-              )}
-            </View>
-            {item.key !== "sign-out" && (
-              <ChevronRight size={16} color="#374151" />
-            )}
-          </Pressable>
-        ))}
-      </View>
+      <MenuSection title="Clinical Tools"    items={clinicalItems}    />
+      <MenuSection title="Compliance"        items={complianceItems}  />
+      <MenuSection title="Finance & Billing" items={financeItems}     />
+      <MenuSection title="Admin"             items={adminItems}       />
+      <MenuSection title="General"           items={generalItems}     />
 
       <Text style={{ color: "#374151", fontSize: 11, textAlign: "center", marginTop: 24 }}>
         Ayura OS · v1.0.0

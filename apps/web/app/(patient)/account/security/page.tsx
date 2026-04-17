@@ -14,7 +14,9 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { TopBar } from "@/components/hospital/TopBar";
+
+// ... (rest of imports remains the same, I'll just add TopBar)
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -173,19 +175,7 @@ export default function SecuritySettingsPage() {
 
   return (
     <div className="min-h-screen bg-[hsl(220_15%_6%)]">
-      {/* Header */}
-      <header className="flex h-16 items-center gap-3 border-b border-border bg-[hsl(220_13%_9%)]/80 px-6 backdrop-blur-sm">
-        <ShieldCheck className="h-5 w-5 text-[#0F766E]" />
-        <h1 className="font-display text-xl font-semibold tracking-tight text-fg">
-          App Lock &amp; Security
-        </h1>
-        <Badge
-          variant="outline"
-          className="ml-auto border-[#0F766E]/40 bg-[#0F766E]/10 text-[10px] text-[#0F766E]"
-        >
-          S-APP-3
-        </Badge>
-      </header>
+      <TopBar title="App Lock & Security" />
 
       <ScrollArea className="flex-1">
         <main className="mx-auto max-w-lg space-y-5 p-6 pb-12">
