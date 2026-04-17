@@ -1,3 +1,5 @@
+"use client";
+
 import { handleLogout } from "@/app/actions";
 import { useEffect } from "react";
 
