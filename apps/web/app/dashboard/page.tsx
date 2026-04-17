@@ -17,13 +17,14 @@ export default async function Dashboard() {
     const role = user.user_metadata?.role;
     const email = user.email || "";
 
-    // 1. Hospital Staff / Admin Redirect
+    // 1. Hospital Staff / Admin Redirect (Handles Dr, Nurse, Pharma, Lab, Admin patterns)
     if (
       role === "staff" ||
       role === "admin" ||
-      email.endsWith("@citygeneral.demo") && !email.includes("patient.")
+      email.endsWith("@citygeneral.demo") && 
+      (email.includes("dr.") || email.includes("nurse.") || email.includes("pharma.") || email.includes("lab.") || email.includes("admin@"))
     ) {
-      redirect("/opd/queue");
+      redirect("/opd/queue"); // Landing on the active clinical hub
     }
 
     // 2. Patient Portal Redirect
@@ -31,7 +32,7 @@ export default async function Dashboard() {
       role === "patient" ||
       email.includes("patient.") && email.endsWith("@citygeneral.demo")
     ) {
-      redirect("/account/security"); // Or a patient home if it exists
+      redirect("/account/security"); // Patient-specific secure area
     }
   }
 
