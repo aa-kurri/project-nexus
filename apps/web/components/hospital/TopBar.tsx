@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Bell, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface TopBarProps {
