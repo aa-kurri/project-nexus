@@ -206,8 +206,8 @@ export default function LandingPage() {
 
           <p className="mx-auto mt-6 max-w-2xl text-base text-muted md:text-lg">
             Ayura OS unifies EMR, LIMS, Pharmacy, and AI into one cohesive platform — deployed in days,
-            not months. Trusted by hospitals across India to reduce documentation time and accelerate
-            revenue cycle.
+            not months. Custom-built for medical workflows to reduce documentation time and accelerate
+            the revenue cycle.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -227,16 +227,7 @@ export default function LandingPage() {
           </div>
 
           {/* Social proof strip */}
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-8 opacity-50 grayscale">
-            {["Apollo", "Manipal", "Narayana", "AIIMS", "Fortis"].map((h) => (
-              <span key={h} className="text-sm font-semibold tracking-wide text-muted">
-                {h}
-              </span>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-muted/60">
-            Trusted by 50+ hospitals across India — names redacted under NDA
-          </p>
+
         </div>
       </section>
 
@@ -320,33 +311,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Testimonial ── */}
-      <section className="py-24">
-        <div className="container mx-auto max-w-3xl text-center">
-          <svg
-            className="mx-auto mb-6 h-8 w-8 text-[#0F766E]"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden
-          >
-            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-          </svg>
 
-          <blockquote className="text-xl font-medium text-fg leading-relaxed md:text-2xl">
-            "Ayura OS cut our discharge-summary turnaround from 40 minutes to under 8. The AI scribe
-            alone paid for the annual subscription in the first quarter."
-          </blockquote>
-
-          <div className="mt-8 flex items-center justify-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#0F766E] to-teal-400 flex items-center justify-center text-xs font-bold text-white">
-              PS
-            </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-fg">Dr. Priya Suresh</p>
-              <p className="text-xs text-muted">Medical Director, Sunrise Multispeciality Hospital</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── Pricing teaser ── */}
       <section id="pricing" className="py-24 bg-surface/40">
