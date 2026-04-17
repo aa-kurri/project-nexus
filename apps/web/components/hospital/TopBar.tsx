@@ -1,17 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface TopBarProps {
   title: string;
   action?: { label: string; href: string };
+  showLogout?: boolean;
 }
 
-export function TopBar({ title, action }: TopBarProps) {
+export function TopBar({ title, action, showLogout = true }: TopBarProps) {
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-surface/80 px-6 backdrop-blur-sm">
+    <header className="flex h-16 items-center justify-between border-b border-border bg-surface/80 px-6 backdrop-blur-sm sticky top-0 z-30">
       <h1 className="font-display text-xl font-semibold tracking-tight text-fg">{title}</h1>
       <div className="flex items-center gap-3">
         {action && (
@@ -26,8 +26,11 @@ export function TopBar({ title, action }: TopBarProps) {
           <Bell className="h-4 w-4" />
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#0F766E]" />
         </button>
+        {showLogout && (
+          <LogoutButton variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted hover:text-red-400 hover:bg-red-500/5" />
+        )}
         <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#0F766E] to-teal-400 text-xs font-bold text-white flex items-center justify-center">
-          Dr
+          P
         </div>
       </div>
     </header>
