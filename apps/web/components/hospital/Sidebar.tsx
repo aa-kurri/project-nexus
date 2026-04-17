@@ -52,6 +52,7 @@ const NAV: NavItem[] = [
     children: [
       { label: "Queue",       href: "/opd/queue" },
       { label: "New Patient", href: "/opd/new-patient" },
+      { label: "Records & Search", href: "/opd/records" },
     ]},
   { label: "IPD",     href: "/ipd",   icon: BedDouble,
     children: [

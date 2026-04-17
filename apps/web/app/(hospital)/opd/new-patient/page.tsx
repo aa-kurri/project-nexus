@@ -183,20 +183,23 @@ export default function NewPatientPage() {
               </CardContent>
             </Card>
 
-            {/* Patient Details */}
+            {/* Patient Identity */}
             <Card className="border-border/40 bg-surface/50 backdrop-blur-xl">
               <CardHeader className="border-b border-border/10 pb-4">
-                <CardTitle className="text-sm text-[#0F766E]">Patient Details</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                   <div className="h-2 w-2 rounded-full bg-[#0F766E]" />
+                   Patient Identity
+                </CardTitle>
               </CardHeader>
-              <CardContent className="pt-5 space-y-5">
+              <CardContent className="pt-5 space-y-6">
 
                 {/* Sex + DOB */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Field label="Sex *">
                     <div className="flex gap-2">
                       {["Male", "Female", "Other"].map((s) => (
                         <button key={s} onClick={() => setForm((f) => ({ ...f, sex: s }))}
-                          className={cn("flex-1 py-2 rounded-lg text-xs font-bold border transition-all",
+                          className={cn("flex-1 py-2.5 rounded-lg text-xs font-bold border transition-all",
                             form.sex === s ? "bg-[#0F766E] text-white border-[#0F766E]" : "border-white/10 text-slate-400 hover:bg-white/5"
                           )}>
                           {s}
@@ -205,35 +208,45 @@ export default function NewPatientPage() {
                     </div>
                   </Field>
                   <Field label="Date of Birth">
-                    <input type="date" value={form.dob} onChange={set("dob")} className={inputCls} />
+                    <div className="relative">
+                      <input type="date" value={form.dob} onChange={set("dob")} className={inputCls} />
+                      <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600 pointer-events-none" />
+                    </div>
                   </Field>
                 </div>
 
                 {/* Age row */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
                   <Field label="Age — Years">
-                    <input value={form.ageYears} onChange={set("ageYears")} placeholder="yrs" className={inputCls} />
+                    <input value={form.ageYears} onChange={set("ageYears")} placeholder="yrs" className="bg-transparent text-sm text-slate-200 outline-none w-full" />
                   </Field>
                   <Field label="Months">
-                    <input value={form.ageMonths} onChange={set("ageMonths")} placeholder="months" className={inputCls} />
+                    <input value={form.ageMonths} onChange={set("ageMonths")} placeholder="mo" className="bg-transparent text-sm text-slate-200 outline-none w-full" />
                   </Field>
                   <Field label="Days">
-                    <input value={form.ageDays} onChange={set("ageDays")} placeholder="days" className={inputCls} />
+                    <input value={form.ageDays} onChange={set("ageDays")} placeholder="days" className="bg-transparent text-sm text-slate-200 outline-none w-full" />
                   </Field>
                 </div>
 
-                {/* Care Taker */}
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Care Taker *">
-                    <Select value={form.careTaker} onChange={set("careTaker")} options={CARE_TAKERS} />
-                  </Field>
-                  <Field label="Care Taker Name *">
-                    <input value={form.careTakerName} onChange={set("careTakerName")} placeholder="Full name" className={inputCls} />
-                  </Field>
+                {/* Care Taker (Guardian) */}
+                <div className="pt-4 border-t border-white/5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#0F766E]">Family / Guardian Info</p>
+                    <div className="h-px flex-1 bg-white/5" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Field label="Relation (Care Taker) *">
+                      <Select value={form.careTaker} onChange={set("careTaker")} options={CARE_TAKERS} />
+                    </Field>
+                    <Field label="Care Taker Name *">
+                      <input value={form.careTakerName} onChange={set("careTakerName")} placeholder="Full name of guardian" className={inputCls} />
+                    </Field>
+                  </div>
                 </div>
 
               </CardContent>
             </Card>
+>
 
             {/* Address */}
             <Card className="border-border/40 bg-surface/50 backdrop-blur-xl">
