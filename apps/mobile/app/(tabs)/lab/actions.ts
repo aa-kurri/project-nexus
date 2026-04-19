@@ -1,12 +1,7 @@
-"use server";
-// Server actions for lab tab.
-// All queries and mutations are tenant-scoped — jwt_tenant() enforced by RLS.
-
+// lab/actions.ts — real Supabase implementation
 import { supabase } from "../../../lib/supabase";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-export type LabSampleStatus = "pending_collection" | "collected" | "processing" | "resulted";
+export type LabSampleStatus = "planned" | "collected" | "received" | "in-progress" | "resulted" | "rejected";
 
 export interface LabSample {
   id: string;
@@ -44,105 +39,139 @@ export interface ResultUploadPayload {
   }>;
 }
 
-// ── Actions ────────────────────────────────────────────────────────────────
+/** Fetch lab samples pending collection (collected_at IS NULL). */
+export async function fetchLabWorklist(): Promise<LabSample[]> {
+  const { data, error } = await supabase
+    .from("lab_samples")
+    .select(`
+      id, barcode, patient_id, status, collected_at,
+      patients ( full_name ),
+      service_requests ( display )
+    `)
+    .is("collected_at", null)
+    .not("status", "eq", "rejected")
+    .order("created_at", { ascending: true });
 
-/**
- * Mark a lab sample as collected.
- * Updates lab_samples.collected_at timestamp.
- *
- * TODO: implement with Supabase:
- *   UPDATE lab_samples
- *   SET collected_at = now()
- *   WHERE id = $sampleId AND tenant_id = jwt_tenant()
- *   RETURNING *
- */
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((r: any) => ({
+    id:           r.id,
+    barcode:      r.barcode,
+    patientId:    r.patient_id,
+    patientName:  r.patients?.full_name ?? "Unknown",
+    testName:     r.service_requests?.display ?? "Unknown",
+    ward:         "—",
+    status:       r.status as LabSampleStatus,
+    collectedAt:  r.collected_at,
+  }));
+}
+
+/** Fetch samples with results pending upload (collected, not yet resulted). */
+export async function fetchPendingResults(): Promise<LabSample[]> {
+  const { data, error } = await supabase
+    .from("lab_samples")
+    .select(`
+      id, barcode, patient_id, status, collected_at,
+      patients ( full_name ),
+      service_requests ( display )
+    `)
+    .not("collected_at", "is", null)
+    .not("status", "in", '("resulted","rejected")')
+    .order("collected_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((r: any) => ({
+    id:          r.id,
+    barcode:     r.barcode,
+    patientId:   r.patient_id,
+    patientName: r.patients?.full_name ?? "Unknown",
+    testName:    r.service_requests?.display ?? "Unknown",
+    ward:        "—",
+    status:      r.status as LabSampleStatus,
+    collectedAt: r.collected_at,
+  }));
+}
+
+/** Mark a lab sample as collected — stamps collected_at and moves status. */
 export async function markCollected(payload: SampleCollectionPayload): Promise<LabSample> {
-  // TODO: replace with real Supabase update
-  console.log("[LAB] Mark collected stub called:", payload);
+  const { data, error } = await supabase
+    .from("lab_samples")
+    .update({
+      collected_at: new Date().toISOString(),
+      status:       "collected",
+    })
+    .eq("id", payload.sampleId)
+    .select(`
+      id, barcode, patient_id, status, collected_at,
+      patients ( full_name ),
+      service_requests ( display )
+    `)
+    .single();
 
-  await new Promise((r) => setTimeout(r, 800));
+  if (error) throw new Error(error.message);
 
   return {
-    id: payload.sampleId,
-    barcode: "LAB-MOCK-001",
-    patientId: "p-1",
-    patientName: "Patient Name",
-    testName: "Test Name",
-    ward: "GA-01",
-    status: "collected",
-    collectedAt: new Date().toISOString(),
+    id:          data.id,
+    barcode:     data.barcode,
+    patientId:   data.patient_id,
+    patientName: (data as any).patients?.full_name ?? "Unknown",
+    testName:    (data as any).service_requests?.display ?? "Unknown",
+    ward:        "—",
+    status:      data.status as LabSampleStatus,
+    collectedAt: data.collected_at,
   };
 }
 
 /**
- * Upload diagnostic results for a lab sample.
- * Inserts into diagnostic_reports table linked to lab_samples.
- *
- * TODO: implement with Supabase:
- *   - INSERT INTO diagnostic_reports (lab_sample_id, code, value, unit, etc.)
- *   - UPDATE lab_samples SET status = 'resulted', resulted_at = now()
- *   - All tenant-scoped by jwt_tenant() via RLS
+ * Upload diagnostic results for a sample.
+ * Marks the sample as "resulted" and inserts diagnostic_report rows.
  */
 export async function uploadResult(payload: ResultUploadPayload): Promise<DiagnosticResult[]> {
-  // TODO: replace with real Supabase insert
-  console.log("[LAB] Upload result stub called:", payload);
+  // Fetch the sample to get patient_id + service_request_id
+  const { data: sample, error: sErr } = await supabase
+    .from("lab_samples")
+    .select("patient_id, service_request_id")
+    .eq("id", payload.sampleId)
+    .single();
 
-  await new Promise((r) => setTimeout(r, 1000));
+  if (sErr || !sample) throw new Error(sErr?.message ?? "Sample not found");
 
-  return [
-    {
-      id: `diag-${Date.now()}`,
-      sampleId: payload.sampleId,
-      testCode: "85025-9",
-      value: null,
-      unit: null,
-      referenceRange: null,
-      interpretation: null,
-      resultedAt: new Date().toISOString(),
-    },
-  ];
-}
+  // Update sample status
+  await supabase
+    .from("lab_samples")
+    .update({ status: "resulted" })
+    .eq("id", payload.sampleId);
 
-/**
- * Fetch lab samples pending collection for the current technician.
- *
- * TODO: implement with Supabase:
- *   SELECT ls.id, ls.barcode, ls.patient_id, p.full_name,
- *          sr.test_name, a.bed_number, ls.status,
- *          ls.collected_at
- *   FROM lab_samples ls
- *   JOIN service_requests sr ON sr.id = ls.service_request_id
- *   JOIN patients p ON p.id = sr.patient_id
- *   JOIN admissions a ON a.patient_id = p.id AND a.status = 'admitted'
- *   WHERE ls.tenant_id = jwt_tenant()
- *         AND ls.collected_at IS NULL
- *   ORDER BY sr.created_at ASC
- */
-export async function fetchLabWorklist(): Promise<LabSample[]> {
-  // TODO: replace with real Supabase query
-  console.log("[LAB] Fetch lab worklist stub called");
-  return [];
-}
+  // Insert one diagnostic_report per result line
+  const results = payload.results?.length
+    ? payload.results
+    : [{ testCode: "85025-9", value: null }]; // placeholder CBC panel code
 
-/**
- * Fetch lab samples with results pending upload (doctor sign-off).
- *
- * TODO: implement with Supabase:
- *   SELECT ls.id, ls.barcode, p.full_name,
- *          sr.test_name, ls.status
- *   FROM lab_samples ls
- *   JOIN service_requests sr ON sr.id = ls.service_request_id
- *   JOIN patients p ON p.id = sr.patient_id
- *   WHERE ls.tenant_id = jwt_tenant()
- *         AND ls.collected_at IS NOT NULL
- *         AND NOT EXISTS (
- *           SELECT 1 FROM diagnostic_reports dr
- *           WHERE dr.lab_sample_id = ls.id
- *         )
- *   ORDER BY ls.created_at ASC
- */
-export async function fetchPendingResults(): Promise<LabSample[]> {
-  // TODO: replace with real Supabase query
-  console.log("[LAB] Fetch pending results stub called");
-  return [];
+  const rows = results.map((r) => ({
+    patient_id:         sample.patient_id,
+    service_request_id: sample.service_request_id,
+    code:               r.testCode,
+    display:            r.testCode,
+    status:             "final",
+    issued_at:          new Date().toISOString(),
+  }));
+
+  const { data: inserted, error: iErr } = await supabase
+    .from("diagnostic_reports")
+    .insert(rows)
+    .select("id, code, issued_at");
+
+  if (iErr) throw new Error(iErr.message);
+
+  return (inserted ?? []).map((r: any) => ({
+    id:             r.id,
+    sampleId:       payload.sampleId,
+    testCode:       r.code,
+    value:          null,
+    unit:           null,
+    referenceRange: null,
+    interpretation: null,
+    resultedAt:     r.issued_at,
+  }));
 }

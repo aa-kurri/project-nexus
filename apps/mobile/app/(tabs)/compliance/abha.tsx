@@ -1,6 +1,8 @@
 import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator } from "react-native";
 import { ShieldCheck, Link2, RefreshCw, Search, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react-native";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "../../../lib/supabase";
+import { useAuthStore } from "../../../store/authStore";
 
 const BG      = "hsl(220, 15%, 6%)";
 const SURFACE = "hsl(220, 13%, 9%)";
@@ -17,37 +19,85 @@ const STATUS_CFG: Record<LinkStatus, { label: string; color: string; Icon: any }
 };
 
 interface AbhaPatient {
-  id: string; name: string; uhid: string; mobile: string;
-  abhaNumber?: string; status: LinkStatus;
+  id:          string;
+  name:        string;
+  uhid:        string;
+  mobile:      string;
+  abhaNumber?: string;
+  status:      LinkStatus;
 }
 
-const PATIENTS: AbhaPatient[] = [
-  { id: "p1", name: "Ramesh Kumar",    uhid: "AY-00412", mobile: "9876543210", abhaNumber: "91-1234-5678-9012", status: "linked"        },
-  { id: "p2", name: "Sunita Sharma",   uhid: "AY-00389", mobile: "9812345678", status: "pending"       },
-  { id: "p3", name: "George Mathew",   uhid: "AY-00345", mobile: "9800112233", status: "not_initiated" },
-  { id: "p4", name: "Priya Venkatesh", uhid: "AY-00298", mobile: "9911223344", status: "failed"        },
-  { id: "p5", name: "Arun Nair",       uhid: "AY-00267", mobile: "9955443322", abhaNumber: "91-9876-5432-1098", status: "linked" },
-];
+function deriveStatus(patient: any): LinkStatus {
+  if (patient.abha_id) return "linked";
+  if (patient.abha_linking_status === "pending") return "pending";
+  if (patient.abha_linking_status === "failed")  return "failed";
+  return "not_initiated";
+}
 
 export default function AbhaScreen() {
+  const { profile }               = useAuthStore();
+  const [patients,  setPatients]  = useState<AbhaPatient[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [linking,   setLinking]   = useState<string | null>(null);
   const [search,    setSearch]    = useState("");
   const [filter,    setFilter]    = useState<LinkStatus | "ALL">("ALL");
-  const [linking,   setLinking]   = useState<string | null>(null);
-  const [localSt,   setLocalSt]   = useState<Record<string, LinkStatus>>({});
+  const [error,     setError]     = useState<string | null>(null);
 
-  const filtered = PATIENTS.filter(p =>
-    (filter === "ALL" || (localSt[p.id] ?? p.status) === filter) &&
-    (p.name.toLowerCase().includes(search.toLowerCase()) || p.uhid.toLowerCase().includes(search.toLowerCase()))
+  const load = useCallback(async () => {
+    if (!profile) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: qErr } = await supabase
+        .from("patients")
+        .select("id, full_name, mrn, phone, abha_id, abha_linking_status")
+        .eq("tenant_id", profile.tenant_id)
+        .order("full_name")
+        .limit(200);
+
+      if (qErr) throw new Error(qErr.message);
+
+      setPatients(
+        (data ?? []).map((p: any) => ({
+          id:          p.id,
+          name:        p.full_name,
+          uhid:        p.mrn,
+          mobile:      p.phone ?? "—",
+          abhaNumber:  p.abha_id ?? undefined,
+          status:      deriveStatus(p),
+        }))
+      );
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [profile]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = patients.filter((p) =>
+    (filter === "ALL" || p.status === filter) &&
+    (p.name.toLowerCase().includes(search.toLowerCase()) ||
+     p.uhid.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const linked = PATIENTS.filter(p => (localSt[p.id] ?? p.status) === "linked").length;
+  const linked = patients.filter((p) => p.status === "linked").length;
 
-  function initiateLink(patientId: string) {
+  async function initiateLink(patientId: string) {
     setLinking(patientId);
-    setTimeout(() => {
-      setLocalSt(prev => ({ ...prev, [patientId]: "pending" }));
+    try {
+      // Mark as pending in DB — real ABDM OTP flow would happen via NHA sandbox
+      await supabase
+        .from("patients")
+        .update({ abha_linking_status: "pending" } as any)
+        .eq("id", patientId);
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
       setLinking(null);
-    }, 1200);
+    }
   }
 
   return (
@@ -60,9 +110,11 @@ export default function AbhaScreen() {
         <Text style={{ color: "#fff", fontSize: 22, fontWeight: "700", marginTop: 2 }}>
           ABHA Linking
         </Text>
-        <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 4 }}>
-          {linked} / {PATIENTS.length} patients linked
-        </Text>
+        {!loading && (
+          <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 4 }}>
+            {linked} / {patients.length} patients linked
+          </Text>
+        )}
       </View>
 
       <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
@@ -76,10 +128,9 @@ export default function AbhaScreen() {
         </View>
       </View>
 
-      {/* Filter chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 12 }}>
-        {(["ALL","linked","pending","failed","not_initiated"] as const).map(f => {
+        {(["ALL","linked","pending","failed","not_initiated"] as const).map((f) => {
           const active = filter === f;
           const color  = f === "ALL" ? PRIMARY : STATUS_CFG[f]?.color ?? PRIMARY;
           return (
@@ -95,56 +146,74 @@ export default function AbhaScreen() {
         })}
       </ScrollView>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingBottom: 40 }}>
-        {filtered.map(p => {
-          const status = (localSt[p.id] ?? p.status) as LinkStatus;
-          const scfg   = STATUS_CFG[status];
-          const isLinking = linking === p.id;
-          return (
-            <View key={p.id} style={{ backgroundColor: SURFACE, borderRadius: 16,
-              borderWidth: 1, borderColor: BORDER, padding: 16 }}>
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 12,
-                  backgroundColor: `${scfg.color}20`, alignItems: "center", justifyContent: "center" }}>
-                  <scfg.Icon size={20} color={scfg.color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#f9fafb", fontWeight: "700", fontSize: 14 }}>{p.name}</Text>
-                  <Text style={{ color: "#6b7280", fontSize: 12, marginTop: 2 }}>
-                    {p.uhid} · {p.mobile}
-                  </Text>
-                  {p.abhaNumber && (
-                    <Text style={{ color: PRIMARY, fontSize: 12, fontWeight: "600", marginTop: 4 }}>
-                      ABHA: {p.abhaNumber}
-                    </Text>
-                  )}
-                </View>
-                <View style={{ backgroundColor: `${scfg.color}20`, borderRadius: 8,
-                  paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ color: scfg.color, fontSize: 10, fontWeight: "700" }}>{scfg.label}</Text>
-                </View>
-              </View>
+      {error && (
+        <View style={{ marginHorizontal: 16, marginBottom: 8,
+          backgroundColor: "#ef444420", borderRadius: 12, padding: 12,
+          borderWidth: 1, borderColor: "#ef444440" }}>
+          <Text style={{ color: "#f87171", fontSize: 13 }}>{error}</Text>
+        </View>
+      )}
 
-              {(status === "not_initiated" || status === "failed") && (
-                <Pressable onPress={() => initiateLink(p.id)} disabled={isLinking}
-                  style={({ pressed }) => ({
-                    marginTop: 12, flexDirection: "row", alignItems: "center",
-                    justifyContent: "center", gap: 6, backgroundColor: PRIMARY,
-                    borderRadius: 10, paddingVertical: 10,
-                    opacity: pressed || isLinking ? 0.7 : 1,
-                  })}>
-                  {isLinking
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Link2 size={14} color="#fff" />}
-                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
-                    {isLinking ? "Initiating…" : status === "failed" ? "Retry Link" : "Initiate ABHA Link"}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          );
-        })}
-      </ScrollView>
+      {loading ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={PRIMARY} size="large" />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingBottom: 40 }}>
+          {filtered.length === 0 && (
+            <Text style={{ color: "#6b7280", textAlign: "center", marginTop: 40 }}>
+              No patients match the filter.
+            </Text>
+          )}
+          {filtered.map((p) => {
+            const scfg      = STATUS_CFG[p.status];
+            const isLinking = linking === p.id;
+            return (
+              <View key={p.id} style={{ backgroundColor: SURFACE, borderRadius: 16,
+                borderWidth: 1, borderColor: BORDER, padding: 16 }}>
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12,
+                    backgroundColor: `${scfg.color}20`, alignItems: "center", justifyContent: "center" }}>
+                    <scfg.Icon size={20} color={scfg.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#f9fafb", fontWeight: "700", fontSize: 14 }}>{p.name}</Text>
+                    <Text style={{ color: "#6b7280", fontSize: 12, marginTop: 2 }}>
+                      {p.uhid} · {p.mobile}
+                    </Text>
+                    {p.abhaNumber && (
+                      <Text style={{ color: PRIMARY, fontSize: 12, fontWeight: "600", marginTop: 4 }}>
+                        ABHA: {p.abhaNumber}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={{ backgroundColor: `${scfg.color}20`, borderRadius: 8,
+                    paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ color: scfg.color, fontSize: 10, fontWeight: "700" }}>{scfg.label}</Text>
+                  </View>
+                </View>
+
+                {(p.status === "not_initiated" || p.status === "failed") && (
+                  <Pressable onPress={() => initiateLink(p.id)} disabled={isLinking}
+                    style={({ pressed }) => ({
+                      marginTop: 12, flexDirection: "row", alignItems: "center",
+                      justifyContent: "center", gap: 6, backgroundColor: PRIMARY,
+                      borderRadius: 10, paddingVertical: 10,
+                      opacity: pressed || isLinking ? 0.7 : 1,
+                    })}>
+                    {isLinking
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Link2 size={14} color="#fff" />}
+                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                      {isLinking ? "Initiating…" : p.status === "failed" ? "Retry Link" : "Initiate ABHA Link"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
     </View>
   );
 }

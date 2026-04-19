@@ -3,9 +3,11 @@ import {
 } from "react-native";
 import {
   ClipboardList, FlaskConical, Scan, Utensils, BookOpen,
-  Plus, ChevronRight, CheckCircle2, Clock, XCircle, Mic2,
+  Plus, ChevronRight, CheckCircle2, Clock, XCircle,
 } from "lucide-react-native";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "../../../lib/supabase";
+import { useAuthStore } from "../../../store/authStore";
 
 const BG      = "hsl(220, 15%, 6%)";
 const SURFACE = "hsl(220, 13%, 9%)";
@@ -24,10 +26,10 @@ const TYPE_CFG: Record<OrderType, { label: string; color: string; Icon: any }> =
 };
 
 const STATUS_CFG: Record<OrderStatus, { label: string; color: string }> = {
-  active:          { label: "Active",        color: PRIMARY   },
-  pending_cosign:  { label: "Awaiting Sign", color: "#f59e0b" },
-  completed:       { label: "Completed",     color: "#6b7280" },
-  discontinued:    { label: "D/C",           color: "#ef4444" },
+  active:         { label: "Active",        color: PRIMARY   },
+  pending_cosign: { label: "Awaiting Sign", color: "#f59e0b" },
+  completed:      { label: "Completed",     color: "#6b7280" },
+  discontinued:   { label: "D/C",           color: "#ef4444" },
 };
 
 interface Order {
@@ -39,63 +41,138 @@ interface CpoePatient {
   id: string; name: string; bed: string; uhid: string; orders: Order[];
 }
 
-const PATIENTS: CpoePatient[] = [
-  {
-    id: "p1", name: "Ramesh Kumar", bed: "GA-01", uhid: "AY-00412",
-    orders: [
-      { id: "o1", type: "medication", text: "Amoxicillin 500 mg",    detail: "PO TDS × 5 days",         status: "active",         time: "08:30", aiGenerated: true },
-      { id: "o2", type: "lab",        text: "CBC + CRP",             detail: "Stat · fasting",           status: "active",         time: "09:00" },
-      { id: "o3", type: "diet",       text: "Soft diet",             detail: "Low sodium",               status: "pending_cosign", time: "10:00" },
-    ],
-  },
-  {
-    id: "p2", name: "Sunita Sharma", bed: "ICU-02", uhid: "AY-00389",
-    orders: [
-      { id: "o4", type: "medication", text: "Noradrenaline 8 mg/50 ml", detail: "0.1 mcg/kg/min IV continuous", status: "active", time: "06:00", aiGenerated: false },
-      { id: "o5", type: "radiology",  text: "CXR Portable",          detail: "Daily morning",            status: "active",         time: "07:00" },
-      { id: "o6", type: "nursing",    text: "Neuro obs Q1H",         detail: "GCS, pupils",              status: "active",         time: "Cont." },
-    ],
-  },
-  {
-    id: "p3", name: "George Mathew", bed: "SP-04", uhid: "AY-00345",
-    orders: [
-      { id: "o7", type: "medication", text: "Tramadol 50 mg",        detail: "PO BD PRN pain",           status: "active",         time: "12:00" },
-      { id: "o8", type: "lab",        text: "PT/INR",                detail: "Tomorrow fasting",         status: "pending_cosign", time: "08:00", aiGenerated: true },
-    ],
-  },
-];
-
 const ORDER_TYPES: OrderType[] = ["medication", "lab", "radiology", "diet", "nursing"];
 
+/** Map service_request.category → OrderType */
+function toOrderType(category: string): OrderType {
+  if (category === "lab")      return "lab";
+  if (category === "radiology") return "radiology";
+  if (category === "diet")      return "diet";
+  if (category === "nursing")   return "nursing";
+  return "medication";
+}
+
+/** Map service_request.status → OrderStatus */
+function toOrderStatus(status: string): OrderStatus {
+  if (status === "completed") return "completed";
+  if (status === "revoked")   return "discontinued";
+  if (status === "draft")     return "pending_cosign";
+  return "active";
+}
+
 export default function CpoeScreen() {
-  const [selected,   setSelected]   = useState<string | null>(null);
-  const [showForm,   setShowForm]   = useState(false);
-  const [newType,    setNewType]    = useState<OrderType>("medication");
-  const [newText,    setNewText]    = useState("");
-  const [newDetail,  setNewDetail]  = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [localOrders, setLocal]     = useState<Order[]>([]);
+  const { profile }              = useAuthStore();
+  const [patients,  setPatients] = useState<CpoePatient[]>([]);
+  const [loading,   setLoading]  = useState(true);
+  const [selected,  setSelected] = useState<string | null>(null);
+  const [showForm,  setShowForm] = useState(false);
+  const [newType,   setNewType]  = useState<OrderType>("medication");
+  const [newText,   setNewText]  = useState("");
+  const [newDetail, setNewDetail]= useState("");
+  const [submitting,setSubmitting]= useState(false);
+  const [error,     setError]    = useState<string | null>(null);
 
-  const patient = PATIENTS.find(p => p.id === selected);
+  const load = useCallback(async () => {
+    if (!profile) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // Get today's admitted patients
+      const { data: admissions, error: aErr } = await supabase
+        .from("admissions")
+        .select(`patient_id, patients ( id, full_name, mrn ), beds ( label )`)
+        .eq("tenant_id", profile.tenant_id)
+        .eq("status", "admitted");
 
-  function submitOrder() {
-    if (!newText.trim()) return;
+      if (aErr) throw new Error(aErr.message);
+      if (!admissions || admissions.length === 0) { setPatients([]); return; }
+
+      const patientIds = admissions.map((a: any) => a.patient_id);
+
+      const { data: orders, error: oErr } = await supabase
+        .from("service_requests")
+        .select("id, patient_id, display, category, status, requested_at")
+        .eq("tenant_id", profile.tenant_id)
+        .in("patient_id", patientIds)
+        .not("status", "eq", "revoked")
+        .order("requested_at", { ascending: false });
+
+      if (oErr) throw new Error(oErr.message);
+
+      const ordersByPatient: Record<string, Order[]> = {};
+      for (const o of (orders ?? [])) {
+        const pid = (o as any).patient_id;
+        if (!ordersByPatient[pid]) ordersByPatient[pid] = [];
+        ordersByPatient[pid].push({
+          id:     o.id,
+          type:   toOrderType((o as any).category),
+          text:   (o as any).display,
+          detail: "",
+          status: toOrderStatus((o as any).status),
+          time:   new Date((o as any).requested_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+        });
+      }
+
+      setPatients(
+        admissions.map((a: any) => ({
+          id:     a.patient_id,
+          name:   a.patients?.full_name ?? "Unknown",
+          bed:    a.beds?.label ?? "—",
+          uhid:   a.patients?.mrn ?? "—",
+          orders: ordersByPatient[a.patient_id] ?? [],
+        }))
+      );
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [profile]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const patient = patients.find((p) => p.id === selected);
+
+  async function submitOrder() {
+    if (!newText.trim() || !selected || !profile) return;
     setSubmitting(true);
-    setTimeout(() => {
-      setLocal(prev => [...prev, {
-        id: `new-${Date.now()}`, type: newType,
-        text: newText, detail: newDetail,
-        status: "pending_cosign", time: "Now", aiGenerated: false,
-      }]);
-      setNewText(""); setNewDetail(""); setShowForm(false); setSubmitting(false);
-    }, 800);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session?.session?.user?.id;
+
+      const { error: iErr } = await supabase
+        .from("service_requests")
+        .insert({
+          tenant_id:    profile.tenant_id,
+          patient_id:   selected,
+          requester_id: userId ?? null,
+          code:         newType.toUpperCase(),
+          display:      newText,
+          category:     newType,
+          status:       "draft",
+        });
+
+      if (iErr) throw new Error(iErr.message);
+      setNewText(""); setNewDetail(""); setShowForm(false);
+      await load(); // refresh
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  const allOrders = [...(patient?.orders ?? []), ...localOrders.filter(() => selected !== null)];
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={PRIMARY} size="large" />
+        <Text style={{ color: "#6b7280", marginTop: 12 }}>Loading orders…</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-      {/* Header */}
       <View style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 16,
         backgroundColor: PRIMARY }}>
         <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 13, fontWeight: "600" }}>
@@ -104,10 +181,22 @@ export default function CpoeScreen() {
         <Text style={{ color: "#fff", fontSize: 22, fontWeight: "700", marginTop: 2 }}>CPOE</Text>
       </View>
 
+      {error && (
+        <View style={{ margin: 16, backgroundColor: "#ef444420", borderRadius: 12,
+          borderWidth: 1, borderColor: "#ef444440", padding: 12 }}>
+          <Text style={{ color: "#f87171", fontSize: 13 }}>{error}</Text>
+        </View>
+      )}
+
       {!selected ? (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
-          {PATIENTS.map(p => {
-            const pending = p.orders.filter(o => o.status === "pending_cosign").length;
+          {patients.length === 0 && (
+            <Text style={{ color: "#6b7280", textAlign: "center", marginTop: 40 }}>
+              No admitted patients found.
+            </Text>
+          )}
+          {patients.map((p) => {
+            const pending = p.orders.filter((o) => o.status === "pending_cosign").length;
             return (
               <Pressable key={p.id} onPress={() => setSelected(p.id)}
                 style={({ pressed }) => ({
@@ -140,13 +229,14 @@ export default function CpoeScreen() {
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-          <Pressable onPress={() => { setSelected(null); setLocal([]); setShowForm(false); }}
+          <Pressable onPress={() => { setSelected(null); setShowForm(false); }}
             style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
             <ChevronRight size={14} color="#6b7280" style={{ transform: [{ rotate: "180deg" }] }} />
             <Text style={{ color: "#6b7280", fontSize: 13 }}>Back</Text>
           </Pressable>
 
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center",
+            justifyContent: "space-between", marginBottom: 16 }}>
             <View>
               <Text style={{ color: "#f9fafb", fontSize: 18, fontWeight: "700" }}>{patient!.name}</Text>
               <Text style={{ color: "#6b7280", fontSize: 12 }}>{patient!.bed} · {patient!.uhid}</Text>
@@ -163,17 +253,14 @@ export default function CpoeScreen() {
             </Pressable>
           </View>
 
-          {/* New order form */}
           {showForm && (
             <View style={{ backgroundColor: SURFACE, borderRadius: 16, borderWidth: 1,
               borderColor: `${PRIMARY}40`, padding: 16, marginBottom: 16, gap: 12 }}>
               <Text style={{ color: "#9ca3af", fontSize: 11, fontWeight: "700",
                 textTransform: "uppercase", letterSpacing: 0.5 }}>New Order</Text>
-
-              {/* Type selector */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                  {ORDER_TYPES.map(t => {
+                  {ORDER_TYPES.map((t) => {
                     const cfg = TYPE_CFG[t];
                     return (
                       <Pressable key={t} onPress={() => setNewType(t)}
@@ -188,7 +275,6 @@ export default function CpoeScreen() {
                   })}
                 </View>
               </ScrollView>
-
               <TextInput
                 value={newText} onChangeText={setNewText}
                 placeholder="Order (e.g. Amoxicillin 500 mg PO TDS)"
@@ -203,7 +289,6 @@ export default function CpoeScreen() {
                 style={{ backgroundColor: BG, borderRadius: 10, borderWidth: 1,
                   borderColor: BORDER, padding: 12, color: "#f9fafb", fontSize: 14 }}
               />
-
               <Pressable onPress={submitOrder} disabled={submitting || !newText.trim()}
                 style={({ pressed }) => ({
                   backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 12,
@@ -216,10 +301,14 @@ export default function CpoeScreen() {
             </View>
           )}
 
-          {/* Orders list */}
           <View style={{ backgroundColor: SURFACE, borderRadius: 16,
             borderWidth: 1, borderColor: BORDER, overflow: "hidden" }}>
-            {allOrders.map((order, i) => {
+            {patient!.orders.length === 0 && (
+              <Text style={{ color: "#6b7280", textAlign: "center", padding: 24 }}>
+                No active orders.
+              </Text>
+            )}
+            {patient!.orders.map((order, i) => {
               const tcfg = TYPE_CFG[order.type];
               const scfg = STATUS_CFG[order.status];
               return (
@@ -232,16 +321,7 @@ export default function CpoeScreen() {
                     <tcfg.Icon size={17} color={tcfg.color} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <Text style={{ color: "#f9fafb", fontWeight: "600", fontSize: 14 }}>{order.text}</Text>
-                      {order.aiGenerated && (
-                        <View style={{ backgroundColor: "#7c3aed20", borderRadius: 4,
-                          paddingHorizontal: 5, paddingVertical: 1 }}>
-                          <Text style={{ color: "#a78bfa", fontSize: 9, fontWeight: "800" }}>AI</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={{ color: "#6b7280", fontSize: 12, marginTop: 2 }}>{order.detail}</Text>
+                    <Text style={{ color: "#f9fafb", fontWeight: "600", fontSize: 14 }}>{order.text}</Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
                       <Clock size={10} color="#4b5563" />
                       <Text style={{ color: "#4b5563", fontSize: 11 }}>{order.time}</Text>
