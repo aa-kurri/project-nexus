@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:flows": "playwright test tests/flows"
   },
   "dependencies": {
     "@langchain/anthropic": "^1.3.26",
