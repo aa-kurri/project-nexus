@@ -12,27 +12,27 @@ export default async function Dashboard() {
   const sb = supabaseServer();
   const { data: { user } } = await sb.auth.getUser();
 
-  // Redirect based on user metadata OR demo email patterns
   if (user) {
-    const role = user.user_metadata?.role;
-    const email = user.email || "";
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
-    // 1. Hospital Staff / Admin Redirect (Handles Dr, Nurse, Pharma, Lab, Admin patterns)
-    if (
-      role === "staff" ||
-      role === "admin" ||
-      email.endsWith("@citygeneral.demo") && 
-      (email.includes("dr.") || email.includes("nurse.") || email.includes("pharma.") || email.includes("lab.") || email.includes("admin@"))
-    ) {
-      redirect("/opd/queue"); // Landing on the active clinical hub
-    }
-
-    // 2. Patient Portal Redirect
-    if (
-      role === "patient" ||
-      email.includes("patient.") && email.endsWith("@citygeneral.demo")
-    ) {
-      redirect("/account/security"); // Patient-specific secure area
+    if (profile) {
+      const rolePathMap: Record<string, string> = {
+        'admin': '/admin/modules',
+        'doctor': '/opd/queue',
+        'nurse': '/ipd/nurse-station',
+        'pharmacist': '/pharmacy/stock',
+        'lab_manager': '/lims/worklist',
+        'patient': '/account/security'
+      };
+      
+      const target = rolePathMap[profile.role];
+      if (target && target !== '/dashboard') {
+        redirect(target);
+      }
     }
   }
 

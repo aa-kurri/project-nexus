@@ -20,7 +20,6 @@ import {
   SlidersHorizontal,
   ShieldCheck,
   Scissors,
-  Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useTransition, useEffect } from "react";
@@ -84,19 +83,26 @@ const NAV: NavItem[] = [
       { label: "Dashboard",   href: "/lims/dashboard" },
       { label: "Antibiogram", href: "/lims/antibiogram" },
     ]},
+  { label: "Casualty / ER", href: "/casualty", icon: Activity,
+    children: [
+      { label: "ER Registration", href: "/casualty/registration" },
+      { label: "Casualty Billing", href: "/casualty/billing" },
+    ]},
   { label: "Billing", href: "/billing", icon: Receipt,
     children: [
-      { label: "Claims",        href: "/billing/claims" },
-      { label: "Payments",      href: "/billing/payments" },
-      { label: "Pre-Auth",      href: "/billing/preauth" },
-      { label: "Packages",      href: "/billing/packages" },
-      { label: "TPA Cashless",  href: "/billing/tpa",   module: "tpa" },
-      { label: "Revenue Audit", href: "/billing/audit", module: "revenue_audit" },
+      { label: "Claims",            href: "/billing/claims" },
+      { label: "Payments",          href: "/billing/payments" },
+      { label: "Investigations",    href: "/billing/investigations" },
+      { label: "Pre-Auth",          href: "/billing/preauth" },
+      { label: "Packages",          href: "/billing/packages" },
+      { label: "TPA Cashless",      href: "/billing/tpa",   module: "tpa" },
+      { label: "Revenue Audit",     href: "/billing/audit", module: "revenue_audit" },
     ]},
   { label: "Analytics", href: "/analytics", icon: TrendingUp,
     children: [
-      { label: "Pharmacy",   href: "/analytics/pharmacy" },
-      { label: "MIS Report", href: "/analytics/mis" },
+      { label: "Pharmacy",    href: "/analytics/pharmacy" },
+      { label: "MIS Report",  href: "/analytics/mis" },
+      { label: "Bed Forecast", href: "/analytics/bedflow" },
     ]},
   { label: "Stores",  href: "/stores", icon: Package,
     children: [

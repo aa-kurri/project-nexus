@@ -27,12 +27,35 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setError(error.message);
         return;
       }
-      router.push("/dashboard");
+      
+      const user = data.user;
+      if (user) {
+        // Fetch role from profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          const rolePathMap: Record<string, string> = {
+            'admin': '/dashboard',
+            'doctor': '/opd/queue',
+            'nurse': '/ipd/nurse-station',
+            'pharmacist': '/pharmacy/stock',
+            'lab_manager': '/lims/worklist',
+            'patient': '/account/security'
+          };
+          router.push(rolePathMap[profile.role] || '/dashboard');
+        } else {
+          router.push("/dashboard");
+        }
+      }
       router.refresh();
     });
   };
