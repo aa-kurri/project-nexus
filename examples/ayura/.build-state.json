@@ -57,11 +57,12 @@
     "S-DISCHARGE",
     "S-INFRA-SENTRY",
     "S-INFRA-CICD",
-    "S-OT-BACKEND"
+    "S-OT-BACKEND",
+    "S-COMPLIANCE-ABDM"
   ],
   "skipped": [
     "S-REPORT-MIS"
   ],
   "last_run": "2026-04-19T00:00:00.000Z",
-  "last_slug": "S-OT-BACKEND"
+  "last_slug": "S-COMPLIANCE-ABDM"
 }
