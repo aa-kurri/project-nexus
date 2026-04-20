@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { apiLimiter } from "@/lib/rate-limit";
 
 /**
  * GET /api/ot/bookings?date=YYYY-MM-DD
@@ -9,6 +10,15 @@ import { cookies } from "next/headers";
  * Defaults to today if no date param supplied.
  */
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = apiLimiter.check(`ot-get:${ip}`);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+    });
+  }
+
   try {
     const { searchParams } = req.nextUrl;
     const dateParam = searchParams.get("date");
@@ -62,6 +72,15 @@ export async function GET(req: NextRequest) {
  * rejects if there's a room or surgeon conflict.
  */
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = apiLimiter.check(`ot-post:${ip}`);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+    });
+  }
+
   try {
     const body = await req.json();
     const {

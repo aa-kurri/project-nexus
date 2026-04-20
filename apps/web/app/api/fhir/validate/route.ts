@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { strictLimiter } from "@/lib/rate-limit";
 
 interface ValidationError {
   field: string;
@@ -26,6 +27,22 @@ interface ValidationError {
  *   401 { error: "Unauthorized" }
  */
 export async function POST(req: NextRequest) {
+  // Rate limit: 20 requests/min per IP
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = strictLimiter.check(ip);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   try {
     // Auth guard
     const cookieStore = cookies();
