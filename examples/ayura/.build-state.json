@@ -56,11 +56,12 @@
     "S-PATIENT-PORTAL",
     "S-DISCHARGE",
     "S-INFRA-SENTRY",
-    "S-INFRA-CICD"
+    "S-INFRA-CICD",
+    "S-OT-BACKEND"
   ],
   "skipped": [
     "S-REPORT-MIS"
   ],
   "last_run": "2026-04-19T00:00:00.000Z",
-  "last_slug": "S-INFRA-CICD"
+  "last_slug": "S-OT-BACKEND"
 }
