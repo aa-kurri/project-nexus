@@ -9,10 +9,12 @@ import {
   BedDouble,
   Pill,
   BarChart3,
-  PieChart as PieIcon,
   Loader2,
+  Download,
+  FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { MISMetrics, DepartmentRow } from "./actions";
 
 type Tab = "summary" | "op" | "ip" | "casualty" | "pharmacy";
 
@@ -133,11 +135,126 @@ function useDashboard() {
   return { data, loading, refresh: fetch };
 }
 
+// ── MIS Report hook (date-range aware) ────────────────────────────────────────
+
+interface MISState {
+  metrics:     MISMetrics | null;
+  departments: DepartmentRow[];
+  loading:     boolean;
+}
+
+function useMISReport(from: string, to: string) {
+  const supabase = createClient();
+  const [state, setState] = useState<MISState>({ metrics: null, departments: [], loading: true });
+
+  const load = useCallback(async () => {
+    setState((s) => ({ ...s, loading: true }));
+
+    const start = `${from}T00:00:00.000Z`;
+    const end   = `${to}T23:59:59.999Z`;
+
+    // Fetch all encounters in range
+    const { data: encounters } = await supabase
+      .from("encounters")
+      .select("id, class, status")
+      .gte("started_at", start)
+      .lte("started_at", end);
+
+    const enc    = encounters ?? [];
+    const encIds = enc.map((e) => e.id as string);
+
+    const opdVisits     = enc.filter((e) => e.class === "opd").length;
+    const newAdmissions = enc.filter((e) => e.class === "ipd").length;
+    const discharges    = enc.filter((e) => e.class === "ipd" && e.status === "finished").length;
+
+    // Lab samples + bills linked to these encounters
+    let labTests     = 0;
+    let totalRevenue = 0;
+
+    if (encIds.length > 0) {
+      const [labRes, billRes] = await Promise.all([
+        supabase
+          .from("lab_samples")
+          .select("*", { count: "exact", head: true })
+          .in("encounter_id", encIds),
+        supabase
+          .from("bills")
+          .select("total_amount")
+          .in("encounter_id", encIds),
+      ]);
+      labTests     = labRes.count ?? 0;
+      totalRevenue = (billRes.data ?? []).reduce((s, b) => s + ((b.total_amount as number) ?? 0), 0);
+    }
+
+    // Department breakdown by class
+    const classMap: Record<string, { ids: string[]; dischargeCount: number }> = {};
+    for (const e of enc) {
+      const cls = (e.class as string) || "other";
+      if (!classMap[cls]) classMap[cls] = { ids: [], dischargeCount: 0 };
+      classMap[cls].ids.push(e.id as string);
+      if (e.status === "finished") classMap[cls].dischargeCount += 1;
+    }
+
+    const departments: DepartmentRow[] = await Promise.all(
+      Object.entries(classMap).map(async ([cls, { ids, dischargeCount }]) => {
+        const [labRes2, billRes2] = await Promise.all([
+          supabase.from("lab_samples").select("*", { count: "exact", head: true }).in("encounter_id", ids),
+          supabase.from("bills").select("total_amount").in("encounter_id", ids),
+        ]);
+        return {
+          department:    cls,
+          newAdmissions: cls === "ipd" ? ids.length : 0,
+          discharges:    cls === "ipd" ? dischargeCount : 0,
+          opdVisits:     cls === "opd" ? ids.length : 0,
+          labTests:      labRes2.count ?? 0,
+          revenue:       (billRes2.data ?? []).reduce((s, b) => s + ((b.total_amount as number) ?? 0), 0),
+        };
+      })
+    );
+
+    setState({
+      metrics:     { newAdmissions, discharges, opdVisits, labTests, totalRevenue },
+      departments: departments.sort((a, b) => b.revenue - a.revenue),
+      loading:     false,
+    });
+  }, [from, to, supabase]);
+
+  useEffect(() => { load(); }, [load]);
+  return { ...state, refresh: load };
+}
+
+// ── CSV export ────────────────────────────────────────────────────────────────
+
+function downloadCSV(departments: DepartmentRow[], from: string, to: string) {
+  const headers = ["Class/Ward", "New Admissions", "Discharges", "OPD Visits", "Lab Tests", "Revenue (INR)"];
+  const rows    = departments.map((d) => [
+    d.department, d.newAdmissions, d.discharges, d.opdVisits, d.labTests, d.revenue.toFixed(2),
+  ]);
+  const csv  = [headers, ...rows].map((r) => r.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `mis-report-${from}-to-${to}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
+
+function defaultRange() {
+  const today = new Date();
+  const from  = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+  const to    = today.toISOString().slice(0, 10);
+  return { from, to };
+}
 
 export default function MisAnalyticsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("summary");
   const { data, loading } = useDashboard();
+  const [dateFrom, setDateFrom] = useState(defaultRange().from);
+  const [dateTo,   setDateTo]   = useState(defaultRange().to);
+  const mis = useMISReport(dateFrom, dateTo);
 
   const TABS = [
     { id: "summary",  label: "Executive Summary", icon: BarChart3 },
@@ -149,15 +266,42 @@ export default function MisAnalyticsPage() {
 
   return (
     <>
-      <TopBar
-        title="Hospital Command Center"
-        action={{ label: "Export MIS", href: "#" }}
-      />
+      <TopBar title="Hospital Command Center" />
 
-      <main className="p-8 space-y-8">
+      <main className="p-8 space-y-6">
+
+        {/* Date range + export */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500 shrink-0">From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500 shrink-0">To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white"
+            />
+          </div>
+          <button
+            onClick={() => mis.departments.length > 0 && downloadCSV(mis.departments, dateFrom, dateTo)}
+            disabled={mis.loading || mis.departments.length === 0}
+            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-300 hover:text-white transition disabled:opacity-40"
+          >
+            {mis.loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            Export CSV
+          </button>
+        </div>
 
         {/* Tab Switcher */}
-        <div className="flex bg-surface/40 p-1 rounded-2xl border border-border/40 backdrop-blur-md w-fit">
+        <div className="flex flex-wrap bg-surface/40 p-1 rounded-2xl border border-border/40 backdrop-blur-md w-fit">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -182,7 +326,7 @@ export default function MisAnalyticsPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {activeTab === "summary"  && <SummaryView  d={data!} />}
+            {activeTab === "summary"  && <SummaryView  d={data!} mis={mis} dateFrom={dateFrom} dateTo={dateTo} />}
             {activeTab === "op"       && <OpView       d={data!} />}
             {activeTab === "ip"       && <IpView />}
             {activeTab === "casualty" && <CasualtyView />}
@@ -196,7 +340,14 @@ export default function MisAnalyticsPage() {
 
 // ── SUB-VIEWS ─────────────────────────────────────────────────────────────────
 
-function SummaryView({ d }: { d: DashboardData }) {
+function SummaryView({
+  d, mis, dateFrom, dateTo,
+}: {
+  d: DashboardData;
+  mis: { metrics: MISMetrics | null; departments: DepartmentRow[]; loading: boolean };
+  dateFrom: string;
+  dateTo: string;
+}) {
   const srcColors: Record<string, string> = {
     opd:      "bg-indigo-500", lab: "bg-rose-500",
     pharmacy: "bg-emerald-500", ipd: "bg-blue-500",
@@ -205,8 +356,80 @@ function SummaryView({ d }: { d: DashboardData }) {
   const maxInv   = Math.max(...d.topInvestigations.map((i) => i.count), 1);
   const maxRx    = Math.max(...d.topMedicines.map((i) => i.count), 1);
 
+  const m = mis.metrics;
+
   return (
     <div className="animate-in fade-in duration-500 space-y-8">
+
+      {/* Date-range MIS metrics */}
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-3">
+          MIS Report · {dateFrom} → {dateTo}
+        </p>
+        {mis.loading ? (
+          <div className="flex items-center gap-2 text-slate-500 text-sm py-4">
+            <Loader2 size={14} className="animate-spin" /> Loading MIS data…
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+              {[
+                { label: "New Admissions", value: m?.newAdmissions ?? 0,  icon: BedDouble },
+                { label: "Discharges",     value: m?.discharges    ?? 0,  icon: BedDouble },
+                { label: "OPD Visits",     value: m?.opdVisits     ?? 0,  icon: Users     },
+                { label: "Lab Tests Run",  value: m?.labTests      ?? 0,  icon: FlaskConical },
+                { label: "Revenue (₹)",   value: `₹${((m?.totalRevenue ?? 0) / 1000).toFixed(1)}K`, icon: BarChart3 },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className="h-3.5 w-3.5 text-[#0F766E]" />
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500">{label}</p>
+                  </div>
+                  <p className="text-2xl font-bold text-slate-100">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Department breakdown table */}
+            {mis.departments.length > 0 && (
+              <Card className="border-border/40 bg-surface/50 backdrop-blur-xl">
+                <CardHeader className="border-b border-border/20 pb-3">
+                  <CardTitle className="text-sm">Breakdown by Class / Ward</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-slate-500 uppercase tracking-widest border-b border-white/5">
+                        <th className="text-left py-3 pr-4 font-medium">Class</th>
+                        <th className="text-right py-3 px-3 font-medium">Admissions</th>
+                        <th className="text-right py-3 px-3 font-medium">Discharges</th>
+                        <th className="text-right py-3 px-3 font-medium">OPD Visits</th>
+                        <th className="text-right py-3 px-3 font-medium">Lab Tests</th>
+                        <th className="text-right py-3 pl-3 font-medium">Revenue (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {mis.departments.map((row) => (
+                        <tr key={row.department} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-3 pr-4 font-semibold text-slate-200 capitalize">{row.department}</td>
+                          <td className="py-3 px-3 text-right font-mono text-slate-300">{row.newAdmissions}</td>
+                          <td className="py-3 px-3 text-right font-mono text-slate-300">{row.discharges}</td>
+                          <td className="py-3 px-3 text-right font-mono text-slate-300">{row.opdVisits}</td>
+                          <td className="py-3 px-3 text-right font-mono text-slate-300">{row.labTests}</td>
+                          <td className="py-3 pl-3 text-right font-mono text-[#0F766E]">
+                            {row.revenue > 0 ? `₹${row.revenue.toFixed(0)}` : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+
       {/* KPI row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Patients"       value={d.totalPatients.toLocaleString()} change="All time" neutral />

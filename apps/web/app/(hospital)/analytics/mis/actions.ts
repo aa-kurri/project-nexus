@@ -1,130 +1,158 @@
 "use server";
 
-// ── S-REPORT-MIS: MIS Reports — Server Actions ────────────────────────────────
-// All actions are tenant-scoped via RLS (public.jwt_tenant()).
-// import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface MISMetrics {
   newAdmissions: number;
-  discharges: number;
-  opdVisits: number;
-  labTests: number;
-  totalRevenue: number;
+  discharges:    number;
+  opdVisits:     number;
+  labTests:      number;
+  totalRevenue:  number;
 }
 
 export interface DepartmentRow {
-  department: string;
+  department:    string;
   newAdmissions: number;
-  discharges: number;
-  opdVisits: number;
-  labTests: number;
-  revenue: number;
+  discharges:    number;
+  opdVisits:     number;
+  labTests:      number;
+  revenue:       number;
 }
 
 export interface MISReportData {
-  metrics: MISMetrics;
+  metrics:     MISMetrics;
   departments: DepartmentRow[];
 }
 
 export type DateRange = {
-  from: string; // ISO date string YYYY-MM-DD
-  to: string;   // ISO date string YYYY-MM-DD
+  from: string; // YYYY-MM-DD
+  to:   string; // YYYY-MM-DD
 };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function rangeTs(range: DateRange) {
+  return {
+    start: `${range.from}T00:00:00.000Z`,
+    end:   `${range.to}T23:59:59.999Z`,
+  };
+}
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
 /**
  * Fetch summary metrics for the given date range.
  *
- * TODO: const supabase = await createClient();
- *
- * TODO: newAdmissions — count admissions where created_at between range.from and range.to
- *   const { count: newAdmissions } = await supabase
- *     .from("admissions")
- *     .select("*", { count: "exact", head: true })
- *     .gte("created_at", range.from)
- *     .lte("created_at", range.to + "T23:59:59Z");
- *
- * TODO: discharges — count admissions where status = 'discharged' and discharged_at in range
- *   const { count: discharges } = await supabase
- *     .from("admissions")
- *     .select("*", { count: "exact", head: true })
- *     .eq("status", "discharged")
- *     .gte("discharged_at", range.from)
- *     .lte("discharged_at", range.to + "T23:59:59Z");
- *
- * TODO: opdVisits — count encounters where class = 'opd' and created_at in range
- *   const { count: opdVisits } = await supabase
- *     .from("encounters")
- *     .select("*", { count: "exact", head: true })
- *     .eq("class", "opd")
- *     .gte("created_at", range.from)
- *     .lte("created_at", range.to + "T23:59:59Z");
- *
- * TODO: labTests — count lab_samples where created_at in range
- *   const { count: labTests } = await supabase
- *     .from("lab_samples")
- *     .select("*", { count: "exact", head: true })
- *     .gte("created_at", range.from)
- *     .lte("created_at", range.to + "T23:59:59Z");
- *
- * TODO: totalRevenue — sum bills.total_amount where created_at in range
- *   const { data: revData } = await supabase
- *     .from("bills")
- *     .select("total_amount")
- *     .gte("created_at", range.from)
- *     .lte("created_at", range.to + "T23:59:59Z");
- *   const totalRevenue = revData?.reduce((acc, r) => acc + (r.total_amount ?? 0), 0) ?? 0;
+ * Schema used:
+ *   encounters  – id, class, status, started_at   (RLS: jwt_tenant())
+ *   lab_samples – encounter_id                    (RLS: jwt_tenant())
+ *   bills       – encounter_id, total_amount       (RLS: jwt_tenant())
  */
 export async function getMISMetrics(range: DateRange): Promise<MISMetrics> {
-  // TODO: replace stubs with real Supabase queries above
-  void range;
-  return {
-    newAdmissions: 0,
-    discharges: 0,
-    opdVisits: 0,
-    labTests: 0,
-    totalRevenue: 0,
-  };
+  const supabase = await createClient();
+  const { start, end } = rangeTs(range);
+
+  // 1. All encounters in range → derive OPD visits, admissions, discharges
+  const { data: encounters } = await supabase
+    .from("encounters")
+    .select("id, class, status")
+    .gte("started_at", start)
+    .lte("started_at", end);
+
+  const enc = encounters ?? [];
+  const encIds = enc.map((e) => e.id as string);
+
+  const opdVisits     = enc.filter((e) => e.class === "opd").length;
+  const newAdmissions = enc.filter((e) => e.class === "ipd").length;
+  const discharges    = enc.filter((e) => e.class === "ipd" && e.status === "finished").length;
+
+  // 2. Lab samples linked to encounters in range
+  let labTests = 0;
+  if (encIds.length > 0) {
+    const { count } = await supabase
+      .from("lab_samples")
+      .select("*", { count: "exact", head: true })
+      .in("encounter_id", encIds);
+    labTests = count ?? 0;
+  }
+
+  // 3. Bills linked to encounters in range
+  let totalRevenue = 0;
+  if (encIds.length > 0) {
+    const { data: bills } = await supabase
+      .from("bills")
+      .select("total_amount")
+      .in("encounter_id", encIds);
+    totalRevenue = (bills ?? []).reduce((s, b) => s + (b.total_amount ?? 0), 0);
+  }
+
+  return { newAdmissions, discharges, opdVisits, labTests, totalRevenue };
 }
 
 /**
- * Fetch per-department breakdown for the given date range.
- *
- * TODO: const supabase = await createClient();
- *
- * Department is derived from encounters.department (or admissions.department).
- * For each metric, group by department and aggregate.
- *
- * TODO: admissions breakdown — query admissions joined with encounters
- *   grouped by department, counted in range:
- *   SELECT e.department,
- *          COUNT(*) FILTER (WHERE a.created_at BETWEEN $from AND $to)  AS new_admissions,
- *          COUNT(*) FILTER (WHERE a.status='discharged' AND a.discharged_at BETWEEN $from AND $to) AS discharges
- *   FROM admissions a
- *   JOIN encounters e ON e.id = a.encounter_id
- *   WHERE a.tenant_id = jwt_tenant()
- *   GROUP BY e.department;
- *
- * TODO: opd visits per department — query encounters where class='opd' grouped by department
- * TODO: lab tests per department — query lab_samples joined to encounters grouped by department
- * TODO: revenue per department — query bills joined to encounters grouped by department
- *
- * Use supabase.rpc("mis_department_breakdown", { from_date: range.from, to_date: range.to })
- * after creating the corresponding SQL function in a migration.
+ * Fetch per-class (department) breakdown for the given date range.
+ * Groups encounters by their `class` field (opd / ipd / emergency / …).
  */
 export async function getDepartmentBreakdown(range: DateRange): Promise<DepartmentRow[]> {
-  // TODO: replace with real Supabase RPC or joined query above
-  void range;
-  return [];
+  const supabase = await createClient();
+  const { start, end } = rangeTs(range);
+
+  const { data: encounters } = await supabase
+    .from("encounters")
+    .select("id, class, status")
+    .gte("started_at", start)
+    .lte("started_at", end);
+
+  const enc = encounters ?? [];
+
+  // Group encounter IDs by class
+  const classMap: Record<string, { ids: string[]; discharges: number }> = {};
+  for (const e of enc) {
+    const cls = (e.class as string) || "other";
+    if (!classMap[cls]) classMap[cls] = { ids: [], discharges: 0 };
+    classMap[cls].ids.push(e.id as string);
+    if (e.status === "finished") classMap[cls].discharges += 1;
+  }
+
+  const classes = Object.keys(classMap);
+  if (classes.length === 0) return [];
+
+  // Fetch lab counts and revenue per class in parallel
+  const rows = await Promise.all(
+    classes.map(async (cls) => {
+      const { ids, discharges } = classMap[cls];
+
+      const [labRes, billRes] = await Promise.all([
+        supabase
+          .from("lab_samples")
+          .select("*", { count: "exact", head: true })
+          .in("encounter_id", ids),
+        supabase
+          .from("bills")
+          .select("total_amount")
+          .in("encounter_id", ids),
+      ]);
+
+      const labTests = labRes.count ?? 0;
+      const revenue  = (billRes.data ?? []).reduce((s, b) => s + (b.total_amount ?? 0), 0);
+
+      return {
+        department:    cls,
+        newAdmissions: cls === "ipd" ? ids.length : 0,
+        discharges:    cls === "ipd" ? discharges  : 0,
+        opdVisits:     cls === "opd" ? ids.length  : 0,
+        labTests,
+        revenue,
+      } satisfies DepartmentRow;
+    })
+  );
+
+  return rows.sort((a, b) => b.revenue - a.revenue);
 }
 
-/**
- * Fetch both metrics and department breakdown in a single call.
- * Convenience wrapper used by the page component.
- */
+/** Convenience wrapper: returns both metrics and breakdown in one call. */
 export async function getMISReport(range: DateRange): Promise<MISReportData> {
   const [metrics, departments] = await Promise.all([
     getMISMetrics(range),
