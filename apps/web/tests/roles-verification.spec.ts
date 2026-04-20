@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const DEMO_PASSWORD = 'Demo@1234';
 const ROLES = [
-  { role: 'Admin',      email: 'admin@citygeneral.demo',          expectedPath: '/dashboard' },
+  { role: 'Admin',      email: 'admin@citygeneral.demo',          expectedPath: '/admin/modules' },
   { role: 'Doctor',     email: 'dr.sharma@citygeneral.demo',       expectedPath: '/opd/queue' },
   { role: 'Nurse',      email: 'nurse.priya@citygeneral.demo',     expectedPath: '/ipd/nurse-station' },
   { role: 'Pharmacist', email: 'pharma.raj@citygeneral.demo',      expectedPath: '/pharmacy/stock' },
@@ -30,11 +30,11 @@ test.describe('Ayura OS Role-Based Access Verification', () => {
       await page.goto('/auth/login');
       
       // 2. Clear and fill credentials
-      await page.getByPlaceholder(/email@hospital.com/i).fill(email);
-      await page.getByPlaceholder(/enter password/i).fill(DEMO_PASSWORD);
+      await page.getByPlaceholder(/hospital\.com/i).fill(email);
+      await page.getByPlaceholder(/••••••••/i).fill(DEMO_PASSWORD);
       
       // 3. Click Sign In
-      await page.getByRole('button', { name: /Sign In/i }).click();
+      await page.getByRole('button', { name: 'Sign In', exact: true }).click();
       
       // 4. Verification: Should land on role-specific page
       await expect(page).toHaveURL(new RegExp(expectedPath));

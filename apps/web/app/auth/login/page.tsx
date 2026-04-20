@@ -35,23 +35,19 @@ export default function LoginPage() {
       
       const user = data.user;
       if (user) {
-        // Fetch role from profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
+        const { getUserRole } = await import("@/app/actions");
+        const role = await getUserRole();
 
-        if (profile) {
+        if (role) {
           const rolePathMap: Record<string, string> = {
-            'admin': '/dashboard',
+            'admin': '/admin/modules',
             'doctor': '/opd/queue',
             'nurse': '/ipd/nurse-station',
             'pharmacist': '/pharmacy/stock',
             'lab_manager': '/lims/worklist',
             'patient': '/account/security'
           };
-          router.push(rolePathMap[profile.role] || '/dashboard');
+          router.push(rolePathMap[role] || '/dashboard');
         } else {
           router.push("/dashboard");
         }

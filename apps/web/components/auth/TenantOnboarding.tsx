@@ -73,7 +73,7 @@ export default function TenantOnboarding() {
                       <Input 
                         value={formData.hospitalName} 
                         onChange={e => setFormData({...formData, hospitalName: e.target.value})} 
-                        placeholder="Apollo Life Clinics"
+                        placeholder="City General Clinics"
                         className="text-lg py-6"
                       />
                    </div>
@@ -132,7 +132,7 @@ export default function TenantOnboarding() {
                      type="email"
                      value={formData.adminEmail} 
                      onChange={e => setFormData({...formData, adminEmail: e.target.value})} 
-                     placeholder="admin@apollolife.com"
+                     placeholder="admin@citygeneral.com"
                      className="text-lg py-6"
                    />
                    <p className="text-xs text-slate-400 mt-2">A master password and FIDO2 setup link will be dispatched to this email immediately.</p>

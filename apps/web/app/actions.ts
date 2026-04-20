@@ -64,3 +64,25 @@ export async function handleLogout() {
   await supabase.auth.signOut();
   redirect("/auth/login");
 }
+
+import { supabaseAdmin } from "@/lib/supabase/server";
+
+/**
+ * getUserRole — fetch the role of the currently logged-in user.
+ * Bypasses strict tenant isolation RLS for the initial redirect flow.
+ */
+export async function getUserRole() {
+  const sb = supabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  
+  if (!user) return null;
+
+  const admin = supabaseAdmin();
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  return profile?.role ?? null;
+}
