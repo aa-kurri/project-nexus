@@ -19,6 +19,7 @@ const PROTECTED_PREFIXES = [
   '/ai',
   '/account',
   '/lock',
+  '/patient',
 ];
 
 const PUBLIC_PREFIXES = ['/auth', '/onboard', '/_next', '/favicon.ico'];
