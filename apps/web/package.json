@@ -19,6 +19,7 @@
     "@nexus/ai-orchestrator": "workspace:*",
     "@nexus/shared-logic": "workspace:*",
     "@nexus/sprint-engine": "workspace:*",
+    "@sentry/nextjs": "^10.49.0",
     "@simplewebauthn/server": "^13.3.0",
     "@simplewebauthn/types": "^12.0.0",
     "@supabase/ssr": "^0.3.0",
@@ -29,9 +30,9 @@
     "ioredis": "^5.10.1",
     "lucide-react": "^0.378.0",
     "next": "14.2.3",
+    "razorpay": "^2.9.6",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "razorpay": "^2.9.6",
     "tailwind-merge": "^2.3.0",
     "zod": "^3.23.8"
   },

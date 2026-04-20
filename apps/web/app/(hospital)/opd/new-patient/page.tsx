@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { TopBar } from "@/components/hospital/TopBar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Search, User, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Search, User, ChevronDown, CheckCircle2, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SALUTATIONS = ["Mr.", "Mrs.", "Miss", "Ms.", "Dr.", "Master", "Baby"];
@@ -246,7 +246,6 @@ export default function NewPatientPage() {
 
               </CardContent>
             </Card>
->
 
             {/* Address */}
             <Card className="border-border/40 bg-surface/50 backdrop-blur-xl">
