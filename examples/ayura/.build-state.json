@@ -59,9 +59,11 @@
     "S-INFRA-CICD",
     "S-OT-BACKEND",
     "S-COMPLIANCE-ABDM",
-    "S-REPORT-MIS"
+    "S-REPORT-MIS",
+    "S-ML-ANOMALY",
+    "S-SECURITY-HARDENING"
   ],
   "skipped": [],
   "last_run": "2026-04-19T00:00:00.000Z",
-  "last_slug": "S-REPORT-MIS"
+  "last_slug": "S-SECURITY-HARDENING"
 }
