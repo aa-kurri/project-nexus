@@ -3,9 +3,21 @@ import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Sentry from "@sentry/react-native";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/authStore";
 import type { Profile } from "../lib/supabase";
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  // Send 10 % of traces in prod, 100 % in dev
+  tracesSampleRate: __DEV__ ? 1.0 : 0.1,
+  // Tag with app version from expo-constants (populated by EAS build)
+  release: process.env.EXPO_PUBLIC_APP_VERSION ?? "dev",
+  environment: __DEV__ ? "development" : "production",
+  // Capture unhandled promise rejections
+  enableNativeNagger: true,
+});
 
 const BG = "hsl(220, 15%, 6%)";
 
@@ -51,7 +63,7 @@ async function fetchAvailableTenants(userId: string) {
   }));
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const { setSession, setProfile, clearAuth, setLoading, isLoading, setAvailableTenants } =
     useAuthStore();
   const router = useRouter();
@@ -111,3 +123,5 @@ export default function RootLayout() {
     </>
   );
 }
+
+export default Sentry.wrap(RootLayout);
