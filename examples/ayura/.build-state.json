@@ -52,11 +52,15 @@
     "S-AUTH-FLOW",
     "S-IPD-NURSE",
     "S-OPD-REALTIME",
-    "S-PAY-RAZORPAY"
+    "S-PAY-RAZORPAY",
+    "S-PATIENT-PORTAL",
+    "S-DISCHARGE",
+    "S-INFRA-SENTRY",
+    "S-INFRA-CICD"
   ],
   "skipped": [
     "S-REPORT-MIS"
   ],
-  "last_run": "2026-04-20T02:31:27.177Z",
-  "last_slug": "S-PAY-RAZORPAY"
+  "last_run": "2026-04-19T00:00:00.000Z",
+  "last_slug": "S-INFRA-CICD"
 }

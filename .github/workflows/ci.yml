@@ -1,0 +1,140 @@
+name: CI — Lint · Typecheck · Build · Preview
+
+on:
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same PR branch
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Lint + Typecheck ─────────────────────────────────────────────────────
+  quality:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (web)
+        run: pnpm --filter web lint
+
+      - name: Typecheck (web)
+        run: pnpm --filter web typecheck
+
+      - name: Typecheck (mobile)
+        run: pnpm --filter mobile typecheck
+
+  # ── 2. Build web ────────────────────────────────────────────────────────────
+  build:
+    name: Build web
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: quality
+
+    env:
+      # Supabase — real project; build must compile against real env
+      NEXT_PUBLIC_SUPABASE_URL:      ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Sentry — upload source maps during CI build
+      NEXT_PUBLIC_SENTRY_DSN:  ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+      SENTRY_ORG:              ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT:          ${{ secrets.SENTRY_PROJECT }}
+      SENTRY_AUTH_TOKEN:       ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_RELEASE:          ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web
+        run: pnpm --filter web build
+
+  # ── 3. Vercel preview deploy ─────────────────────────────────────────────────
+  preview:
+    name: Deploy preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    # Only deploy previews when Vercel secrets are available
+    if: >
+      secrets.VERCEL_TOKEN != '' &&
+      secrets.VERCEL_ORG_ID != '' &&
+      secrets.VERCEL_PROJECT_ID != ''
+
+    env:
+      VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy preview to Vercel
+        id: deploy
+        run: |
+          DEPLOY_URL=$(npx vercel \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --yes \
+            --cwd apps/web \
+            2>/dev/null | tail -1)
+          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.deploy.outputs.url }}';
+            if (!url) { core.warning('No preview URL — skipping comment.'); return; }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                '## Vercel Preview',
+                '',
+                `**${url}**`,
+                '',
+                `Commit: \`${context.sha.slice(0,7)}\``,
+              ].join('\n'),
+            });

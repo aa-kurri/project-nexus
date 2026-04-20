@@ -1,0 +1,100 @@
+name: CD — Production Deploy
+
+on:
+  push:
+    branches: [main]
+    # Don't re-deploy just because the autonomous story builder updated build state
+    paths-ignore:
+      - 'examples/ayura/.build-state.json'
+      - '**.md'
+
+# Only one production deploy at a time; never cancel an in-flight deploy
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Skip if the push was made by the autonomous story builder bot
+    if: github.actor != 'github-actions[bot]'
+
+    env:
+      VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    outputs:
+      deploy_url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel (production)
+        id: deploy
+        run: |
+          DEPLOY_URL=$(npx vercel \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --prod \
+            --yes \
+            --cwd apps/web \
+            2>/dev/null | tail -1)
+          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $DEPLOY_URL"
+
+  # ── Notify Slack ─────────────────────────────────────────────────────────────
+  notify:
+    name: Slack notification
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always() && secrets.SLACK_WEBHOOK_URL != ''
+
+    steps:
+      - name: Send Slack notification
+        uses: actions/github-script@v7
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const status   = '${{ needs.deploy.result }}';
+            const url      = '${{ needs.deploy.outputs.deploy_url }}';
+            const sha      = context.sha.slice(0, 7);
+            const actor    = context.actor;
+            const repoUrl  = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${context.sha}`;
+
+            const icon  = status === 'success' ? ':white_check_mark:' : ':x:';
+            const color = status === 'success' ? '#059669' : '#ef4444';
+            const title = status === 'success'
+              ? `Ayura OS deployed to production`
+              : `Ayura OS production deploy FAILED`;
+
+            const payload = {
+              attachments: [{
+                color,
+                fallback: title,
+                title,
+                fields: [
+                  { title: 'Commit',     value: `<${commitUrl}|\`${sha}\`>`, short: true },
+                  { title: 'Pushed by',  value: actor,                        short: true },
+                  ...(url && status === 'success'
+                    ? [{ title: 'Preview URL', value: `<${url}|Open>`,        short: false }]
+                    : []),
+                ],
+                ts: Math.floor(Date.now() / 1000).toString(),
+              }],
+            };
+
+            const response = await fetch(process.env.SLACK_WEBHOOK_URL, {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              core.warning(`Slack notification failed: ${response.status} ${await response.text()}`);
+            }
