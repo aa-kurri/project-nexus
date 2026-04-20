@@ -14,7 +14,8 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, action, showLogout = true }: TopBarProps) {
-  const [userName, setUserName] = useState<string>("");
+  const [userName, setUserName]         = useState<string>("");
+  const [alertCount, setAlertCount]     = useState(0);
   const supabase = createClient();
 
   useEffect(() => {
@@ -31,6 +32,34 @@ export function TopBar({ title, action, showLogout = true }: TopBarProps) {
     })();
   }, [supabase]);
 
+  // ── Realtime anomaly badge ────────────────────────────────────────────────
+  useEffect(() => {
+    // Initial count
+    supabase
+      .from("anomaly_alerts")
+      .select("id", { count: "exact", head: true })
+      .eq("acknowledged", false)
+      .then(({ count }) => setAlertCount(count ?? 0));
+
+    // Subscribe to INSERT / UPDATE on anomaly_alerts
+    const channel = supabase
+      .channel("topbar-anomaly-badge")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "anomaly_alerts" },
+        () => {
+          supabase
+            .from("anomaly_alerts")
+            .select("id", { count: "exact", head: true })
+            .eq("acknowledged", false)
+            .then(({ count }) => setAlertCount(count ?? 0));
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase]);
+
   const initial = userName ? userName[0].toUpperCase() : "U";
 
   return (
@@ -45,12 +74,20 @@ export function TopBar({ title, action, showLogout = true }: TopBarProps) {
             </Button>
           </Link>
         )}
-        <button className="relative rounded-lg p-2 text-muted hover:bg-surface hover:text-fg transition-colors">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#0F766E]" />
-        </button>
+        <Link href="/analytics/anomalies" title={alertCount > 0 ? `${alertCount} unacknowledged anomaly alert${alertCount !== 1 ? "s" : ""}` : "Anomaly alerts"}>
+          <button className="relative rounded-lg p-2 text-muted hover:bg-surface hover:text-fg transition-colors">
+            <Bell className="h-4 w-4" />
+            {alertCount > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                {alertCount > 9 ? "9+" : alertCount}
+              </span>
+            ) : (
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#0F766E]" />
+            )}
+          </button>
+        </Link>
         {showLogout && (
-          <LogoutButton variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted hover:text-red-400 hover:bg-red-500/5" />
+          <LogoutButton variant="ghost" className="h-8 w-8 p-0 text-muted hover:text-red-400 hover:bg-red-500/5" />
         )}
         <div className="flex items-center gap-2">
           {userName && <span className="text-[10px] uppercase tracking-widest text-muted font-bold hidden md:block">{userName}</span>}
