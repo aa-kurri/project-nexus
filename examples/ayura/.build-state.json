@@ -51,11 +51,12 @@
     "S-AI-COPILOT-RAG",
     "S-AUTH-FLOW",
     "S-IPD-NURSE",
-    "S-OPD-REALTIME"
+    "S-OPD-REALTIME",
+    "S-PAY-RAZORPAY"
   ],
   "skipped": [
     "S-REPORT-MIS"
   ],
-  "last_run": "2026-04-20T02:29:14.912Z",
-  "last_slug": "S-OPD-REALTIME"
+  "last_run": "2026-04-20T02:31:27.177Z",
+  "last_slug": "S-PAY-RAZORPAY"
 }
