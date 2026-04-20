@@ -5,8 +5,8 @@ import { ChevronDown, X } from "lucide-react-native";
 import { Input }  from "../../../components/ui/input";
 import { Badge }  from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import { TopBar } from "../../../components/hospital/TopBar";
-import { updateStaffRole, getStaffList } from "./actions";
+import TopBar from "../../../components/hospital/TopBar";
+import { updateStaffRole, getStaffList, type StaffRole } from "./actions";
 
 const BG      = "hsl(220, 15%, 6%)";
 const SURFACE = "hsl(220, 13%, 9%)";
@@ -14,9 +14,8 @@ const PRIMARY = "#0F766E";
 const BORDER  = "#1e2332";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type StaffRole = "doctor" | "nurse" | "pharmacist" | "lab_manager" | "admin" | "staff";
 
-const ROLE_LABEL: Record<StaffRole, string> = {
+const ROLE_LABEL: Record<string, string> = {
   doctor:      "Doctor",
   nurse:       "Nurse",
   pharmacist:  "Pharmacist",
@@ -25,7 +24,7 @@ const ROLE_LABEL: Record<StaffRole, string> = {
   staff:       "Staff",
 };
 
-const ROLE_COLOR: Record<StaffRole, string> = {
+const ROLE_COLOR: Record<string, string> = {
   doctor:      PRIMARY,
   nurse:       "#6366f1",
   pharmacist:  "#f59e0b",

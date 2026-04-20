@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   ShieldCheck,
   Scissors,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useTransition, useEffect } from "react";
@@ -58,6 +59,7 @@ const NAV: NavItem[] = [
       { label: "Bed Board",     href: "/ipd/beds" },
       { label: "Dashboard",     href: "/ipd/dashboard" },
       { label: "Nurse Station", href: "/ipd/nurse-station" },
+      { label: "Sepsis Watch",  href: "/ipd/sepsis-watch" },
       { label: "CPOE",          href: "/ipd/cpoe",  module: "cpoe" },
       { label: "MAR",           href: "/ipd/mar",   module: "mar"  },
       { label: "ICU Flowsheet", href: "/ipd/icu",   module: "icu_flowsheet" },
@@ -66,6 +68,12 @@ const NAV: NavItem[] = [
     children: [
       { label: "Patients",   href: "/emr/patients" },
       { label: "Case Files", href: "/emr/case-files" },
+    ]},
+  { label: "Documents", href: "/documents", icon: FileText,
+    children: [
+      { label: "Upload & OCR",  href: "/documents/upload" },
+      { label: "Translate",     href: "/documents/translate" },
+      { label: "OCR Review",    href: "/documents/ocr-review" },
     ]},
   { label: "Pharmacy", href: "/pharmacy", icon: Pill,
     children: [
@@ -100,9 +108,12 @@ const NAV: NavItem[] = [
     ]},
   { label: "Analytics", href: "/analytics", icon: TrendingUp,
     children: [
-      { label: "Pharmacy",    href: "/analytics/pharmacy" },
-      { label: "MIS Report",  href: "/analytics/mis" },
-      { label: "Bed Forecast", href: "/analytics/bedflow" },
+      { label: "Pharmacy",            href: "/analytics/pharmacy" },
+      { label: "MIS Report",          href: "/analytics/mis" },
+      { label: "Bed Forecast",        href: "/analytics/bedflow" },
+      { label: "Medicine Trends",     href: "/analytics/medicine-trends" },
+      { label: "Patient Intelligence",href: "/analytics/patient-intelligence" },
+      { label: "Revenue AI",          href: "/analytics/revenue-ai" },
     ]},
   { label: "Stores",  href: "/stores", icon: Package,
     children: [
@@ -111,7 +122,10 @@ const NAV: NavItem[] = [
       { label: "Purchase Orders", href: "/stores/purchase-orders" },
       { label: "Suppliers",       href: "/stores/suppliers" },
     ]},
-  { label: "OT",        href: "/ot",       icon: Scissors },
+  { label: "OT",        href: "/ot",       icon: Scissors,
+    children: [
+      { label: "Analytics", href: "/ot/analytics" },
+    ]},
   { label: "Compliance", href: "/compliance", icon: ShieldCheck,
     children: [
       { label: "ABHA / ABDM",    href: "/compliance/abha",   module: "abha" },

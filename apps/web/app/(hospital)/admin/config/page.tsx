@@ -17,7 +17,7 @@ const SECTIONS: { id: ConfigSection; label: string; icon: React.ElementType }[] 
 ];
 
 const HOSPITAL_CONFIG = [
-  { label: "Hospital Name",     value: "Chenna Reddy Hospitals",   editable: true },
+  { label: "Hospital Name",     value: "City General Hospitals",   editable: true },
   { label: "License Number",    value: "HOS-TS-2019-00123",        editable: false },
   { label: "GSTIN",             value: "36AAACH1234F1ZP",          editable: true },
   { label: "Address",           value: "Himayatnagar, Hyderabad",  editable: true },

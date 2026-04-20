@@ -31,7 +31,7 @@ export default function RecordsSearchPage() {
     // Simulate search
     setTimeout(() => {
       setResults([
-        { id: "AY-00821", name: "Anish Kurri", phone: "9900088776", city: "Chennai", date: "16 Apr 2026", status: "Active" },
+        { id: "AY-00821", name: "Anish Kurri", phone: "9900088776", city: "Hyderabad", date: "16 Apr 2026", status: "Active" },
         { id: "AY-00815", name: "Sarah Malik", phone: "8877666554", city: "Hyderabad", date: "15 Apr 2026", status: "Active" },
         { id: "AY-00792", name: "Priya Sharma", phone: "9440011223", city: "Bangalore", date: "12 Apr 2026", status: "Active" },
       ]);

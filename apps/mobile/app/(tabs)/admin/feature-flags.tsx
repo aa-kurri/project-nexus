@@ -38,13 +38,16 @@ export default function FeatureFlagsScreen() {
 
   // ── Load flags on mount ────────────────────────────────────────────────────
   useEffect(() => {
-    loadFlags();
-  }, []);
+    if (profile?.tenant_id) {
+      loadFlags();
+    }
+  }, [profile?.tenant_id]);
 
   const loadFlags = async () => {
+    if (!profile?.tenant_id) return;
     setLoading(true);
     try {
-      const data = await getFeatureFlags();
+      const data = await getFeatureFlags(profile.tenant_id);
       setFlags(data);
     } catch {
       // TODO: surface toast error

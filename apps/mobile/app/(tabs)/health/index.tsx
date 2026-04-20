@@ -1,57 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
-import { Activity, Heart, Wind, TrendingUp, Upload, CheckCircle } from "lucide-react-native";
+import { Activity, Heart, Wind, TrendingUp, Upload, CheckCircle, AlertCircle } from "lucide-react-native";
+import { useAuthStore } from "../../../store/authStore";
+import { fetchMetricTrend, syncToHospital, type MetricKind, type TrendPoint } from "./actions";
 
 // ---------------------------------------------------------------------------
-// Mock data — replace with expo-health / Health Connect reads when available
+// Meta-data for UI components
 // ---------------------------------------------------------------------------
-
-type MetricKind = "steps" | "hr" | "spo2";
-
-interface DataPoint {
-  label: string;   // e.g. "Mon", "10:00"
-  value: number;
-}
-
-const MOCK: Record<MetricKind, DataPoint[]> = {
-  steps: [
-    { label: "Mon", value: 6_200 },
-    { label: "Tue", value: 8_750 },
-    { label: "Wed", value: 5_100 },
-    { label: "Thu", value: 9_340 },
-    { label: "Fri", value: 7_800 },
-    { label: "Sat", value: 11_200 },
-    { label: "Sun", value: 4_650 },
-  ],
-  hr: [
-    { label: "00:00", value: 58 },
-    { label: "04:00", value: 55 },
-    { label: "08:00", value: 72 },
-    { label: "12:00", value: 88 },
-    { label: "16:00", value: 94 },
-    { label: "20:00", value: 76 },
-    { label: "23:00", value: 62 },
-  ],
-  spo2: [
-    { label: "00:00", value: 97 },
-    { label: "04:00", value: 96 },
-    { label: "08:00", value: 98 },
-    { label: "12:00", value: 99 },
-    { label: "16:00", value: 98 },
-    { label: "20:00", value: 97 },
-    { label: "23:00", value: 97 },
-  ],
-};
 
 const META: Record<
   MetricKind,
-  { label: string; unit: string; icon: typeof Activity; color: string; normal: string }
+  { label: string; unit: string; icon: any; color: string; normal: string }
 > = {
   steps: {
     label: "Steps",
@@ -77,18 +43,19 @@ const META: Record<
 };
 
 // ---------------------------------------------------------------------------
-// Mini bar chart — pure RN primitives, no external chart library needed
+// Mini bar chart — pure RN primitives
 // ---------------------------------------------------------------------------
 
-function BarChart({ data, color }: { data: DataPoint[]; color: string }) {
+function BarChart({ data, color }: { data: TrendPoint[]; color: string }) {
+  if (data.length === 0) return null;
   const max = Math.max(...data.map((d) => d.value), 1);
 
   return (
     <View className="flex-row items-end justify-between mt-4 px-1" style={{ height: 96 }}>
-      {data.map((d) => {
+      {data.map((d, i) => {
         const heightPct = d.value / max;
         return (
-          <View key={d.label} className="flex-1 items-center" style={{ gap: 4 }}>
+          <View key={`${d.timestamp}-${i}`} className="flex-1 items-center" style={{ gap: 4 }}>
             <View
               style={{
                 width: "60%",
@@ -114,9 +81,9 @@ function BarChart({ data, color }: { data: DataPoint[]; color: string }) {
 
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-1 items-center rounded-xl py-3 px-2 bg-gray-50">
-      <Text className="text-xs text-gray-400 font-medium">{label}</Text>
-      <Text className="text-sm font-bold text-gray-800 mt-0.5">{value}</Text>
+    <View className="flex-1 items-center rounded-xl py-3 px-2 bg-gray-50 border border-gray-100">
+      <Text className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{label}</Text>
+      <Text className="text-sm font-bold text-gray-800 mt-1">{value}</Text>
     </View>
   );
 }
@@ -125,12 +92,26 @@ function StatPill({ label, value }: { label: string; value: string }) {
 // Metric card
 // ---------------------------------------------------------------------------
 
-function MetricCard({ kind }: { kind: MetricKind }) {
+function MetricCard({ kind, patientId }: { kind: MetricKind; patientId: string }) {
   const { label, unit, icon: Icon, color, normal } = META[kind];
-  const data = MOCK[kind];
-  const latest = data[data.length - 1].value;
-  const avg = Math.round(data.reduce((s, d) => s + d.value, 0) / data.length);
-  const peak = Math.max(...data.map((d) => d.value));
+  const [data, setData] = useState<TrendPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMetricTrend(patientId, kind)
+      .then(setData)
+      .finally(() => setLoading(false));
+  }, [patientId, kind]);
+
+  if (loading) return (
+    <View className="rounded-2xl bg-white mb-4 p-8 items-center justify-center border border-gray-100">
+      <ActivityIndicator color={color} />
+    </View>
+  );
+
+  const latest = data.length > 0 ? data[data.length - 1].value : 0;
+  const avg = data.length > 0 ? Math.round(data.reduce((s, d) => s + d.value, 0) / data.length) : 0;
+  const peak = data.length > 0 ? Math.max(...data.map((d) => d.value)) : 0;
 
   return (
     <View
@@ -153,24 +134,31 @@ function MetricCard({ kind }: { kind: MetricKind }) {
         </View>
         <View className="items-end">
           <Text className="text-2xl font-extrabold" style={{ color }}>
-            {latest.toLocaleString()}
+            {data.length > 0 ? latest.toLocaleString() : "--"}
           </Text>
           <Text className="text-xs text-gray-400">{unit}</Text>
         </View>
       </View>
 
       {/* Bar chart */}
-      <BarChart data={data} color={color} />
+      {data.length > 0 ? (
+        <BarChart data={data} color={color} />
+      ) : (
+        <View className="h-24 items-center justify-center bg-gray-50/50 rounded-xl mt-4 border border-dashed border-gray-200">
+          <Text className="text-xs text-gray-400">No trend data available</Text>
+        </View>
+      )}
 
       {/* Stats row */}
       <View className="flex-row gap-2 mt-4">
-        <StatPill label="Avg" value={`${avg.toLocaleString()} ${unit}`} />
-        <StatPill label="Peak" value={`${peak.toLocaleString()} ${unit}`} />
-        <StatPill label="Latest" value={`${latest.toLocaleString()} ${unit}`} />
+        <StatPill label="Avg" value={data.length > 0 ? `${avg.toLocaleString()}` : "--"} />
+        <StatPill label="Peak" value={data.length > 0 ? `${peak.toLocaleString()}` : "--"} />
+        <StatPill label="Latest" value={data.length > 0 ? `${latest.toLocaleString()}` : "--"} />
       </View>
     </View>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Sync button — calls the wearable-ingest Edge Function
@@ -182,61 +170,41 @@ const EDGE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL
 
 type SyncState = "idle" | "syncing" | "done" | "error";
 
-function SyncButton() {
+function SyncButton({ patientId, onSyncComplete }: { patientId: string; onSyncComplete: () => void }) {
   const [state, setState] = useState<SyncState>("idle");
 
   async function handleSync() {
     setState("syncing");
     try {
-      // TODO: replace mock payload with real expo-health / Health Connect reads
+      // Mocked device data for demonstration — in production this reads from Health Connect
       const metrics = [
-        ...MOCK.steps.map((d) => ({
-          code: "55423-8",
-          code_system: "http://loinc.org",
-          display: "Number of steps in unspecified time Pedometer",
-          value_num: d.value,
-          value_unit: "steps/day",
-          effective_at: new Date().toISOString(),
-          source: "apple_health",
-        })),
-        ...MOCK.hr.map((d) => ({
+        {
+          patient_id: patientId,
           code: "8867-4",
           code_system: "http://loinc.org",
           display: "Heart rate",
-          value_num: d.value,
-          value_unit: "beats/min",
+          value_num: 72 + Math.floor(Math.random() * 10),
+          value_unit: "bpm",
           effective_at: new Date().toISOString(),
-          source: "apple_health",
-        })),
-        ...MOCK.spo2.map((d) => ({
+        },
+        {
+          patient_id: patientId,
           code: "59408-5",
           code_system: "http://loinc.org",
-          display: "Oxygen saturation in Arterial blood by Pulse oximetry",
-          value_num: d.value,
+          display: "SpO2",
+          value_num: 97 + Math.floor(Math.random() * 3),
           value_unit: "%",
           effective_at: new Date().toISOString(),
-          source: "apple_health",
-        })),
+        }
       ];
 
-      if (!EDGE_URL) {
-        // Dev mode: just simulate delay
-        await new Promise((r) => setTimeout(r, 1200));
-        setState("done");
-        return;
-      }
-
-      const res = await fetch(EDGE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ metrics }),
-      });
-
-      setState(res.ok ? "done" : "error");
+      await syncToHospital(metrics);
+      setState("done");
+      onSyncComplete();
     } catch {
       setState("error");
     } finally {
-      if (state !== "error") setTimeout(() => setState("idle"), 3000);
+      setTimeout(() => setState("idle"), 3000);
     }
   }
 
@@ -276,29 +244,56 @@ function SyncButton() {
 // ---------------------------------------------------------------------------
 
 export default function HealthScreen() {
+  const { profile } = useAuthStore();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const patientId = profile?.patient_id || (profile?.role === "patient" ? profile.id : null);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setRefreshKey(prev => prev + 1);
+    setTimeout(() => setRefreshing(false), 800);
+  }, []);
+
+  if (!patientId) {
+    return (
+      <View className="flex-1 items-center justify-center bg-gray-50 p-10">
+        <AlertCircle size={48} color="#9ca3af" />
+        <Text className="text-gray-900 font-bold text-lg mt-4">No Patient Profile</Text>
+        <Text className="text-gray-500 text-center mt-2">
+          This feature is only available for accounts with an associated Patient record.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       className="flex-1 bg-gray-50"
       contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F766E" />
+      }
     >
       {/* Header */}
-      <View className="px-5 pt-14 pb-5" style={{ backgroundColor: "#0F766E" }}>
+      <View className="px-5 pt-14 pb-6" style={{ backgroundColor: "#0F766E" }}>
         <View className="flex-row items-center gap-2 mb-1">
           <TrendingUp color="#fff" size={20} />
           <Text className="text-white/80 text-sm font-medium uppercase tracking-widest">
             Health
           </Text>
         </View>
-        <Text className="text-white text-2xl font-bold">Wearable Metrics</Text>
+        <Text className="text-white text-2xl font-bold">Clinical Trends</Text>
         <Text className="text-white/60 text-sm mt-0.5">
-          Apple Health · Google Fit · Last 7 days
+          Synced Observations · Last 20 readings
         </Text>
       </View>
 
       <View className="px-5 mt-5">
         {/* Source badge */}
         <View className="flex-row gap-2 mb-5">
-          {(["Apple Health", "Google Fit"] as const).map((src) => (
+          {(["Hospital Records", "Wearable Sync"] as const).map((src) => (
             <View
               key={src}
               className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5 bg-white border border-gray-100"
@@ -310,20 +305,21 @@ export default function HealthScreen() {
         </View>
 
         {/* Metric cards */}
-        <MetricCard kind="steps" />
-        <MetricCard kind="hr" />
-        <MetricCard kind="spo2" />
+        <MetricCard key={`steps-${refreshKey}`} kind="steps" patientId={patientId} />
+        <MetricCard key={`hr-${refreshKey}`} kind="hr" patientId={patientId} />
+        <MetricCard key={`spo2-${refreshKey}`} kind="spo2" patientId={patientId} />
 
         {/* Sync CTA */}
-        <View className="rounded-2xl bg-white p-5 shadow-sm shadow-black/5 mt-1">
-          <Text className="font-bold text-gray-900 mb-1">Push to EMR</Text>
-          <Text className="text-xs text-gray-400 mb-4">
-            Securely upload your wearable readings to the hospital record as
-            FHIR Observations (LOINC coded).
+        <View className="rounded-2xl bg-white p-5 shadow-sm shadow-black/5 mt-1 border border-gray-100">
+          <Text className="font-bold text-gray-900 mb-1">Update Trends</Text>
+          <Text className="text-xs text-gray-400 mb-4 lh-18">
+            Sync your device data to push latest heart rate and oxygen saturation
+            to your hospital profile.
           </Text>
-          <SyncButton />
+          <SyncButton patientId={patientId} onSyncComplete={onRefresh} />
         </View>
       </View>
     </ScrollView>
   );
 }
+

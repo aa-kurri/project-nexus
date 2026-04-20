@@ -9,7 +9,7 @@ import { Truck, Search, Phone, Mail, MapPin, CheckCircle2, XCircle } from "lucid
 const SUPPLIERS = [
   { id: "SUP-001", name: "Girish Surgicals",      gstin: "29ABCDE1234F1Z5", city: "Hyderabad", phone: "+91 98400 11234", email: "orders@girishsurgicals.com",  terms: "Net 30", active: true,  categories: ["Consumables", "Surgical"] },
   { id: "SUP-002", name: "JBS Rehab",              gstin: "27FGHIJ5678K2L6", city: "Mumbai",    phone: "+91 98765 43210", email: "supply@jbsrehab.in",          terms: "Net 15", active: true,  categories: ["Orthopedic", "Rehab"] },
-  { id: "SUP-003", name: "MediSource India",        gstin: "33KLMNO9012P3Q7", city: "Chennai",   phone: "+91 99001 23456", email: "info@medisource.co.in",       terms: "Advance",active: true,  categories: ["Pharmaceuticals"] },
+  { id: "SUP-003", name: "MediSource India",        gstin: "33KLMNO9012P3Q7", city: "Bengaluru",   phone: "+91 99001 23456", email: "info@medisource.co.in",       terms: "Advance",active: true,  categories: ["Pharmaceuticals"] },
   { id: "SUP-004", name: "PharmaCo Distributors",  gstin: "07RSTUV3456W4X8", city: "Delhi",     phone: "+91 98111 00000", email: "sales@pharmaco.in",           terms: "Net 45", active: false, categories: ["Pharmaceuticals", "OTC"] },
   { id: "SUP-005", name: "HealthMart Supplies",    gstin: "36YZABC7890D5E9", city: "Bengaluru", phone: "+91 80900 55500", email: "purchase@healthmart.in",      terms: "Net 30", active: true,  categories: ["Lab Reagents", "Consumables"] },
 ];

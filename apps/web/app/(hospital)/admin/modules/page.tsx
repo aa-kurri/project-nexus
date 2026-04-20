@@ -234,7 +234,7 @@ const INITIAL_MODULES: ModuleConfig[] = [
     desc: "Patient-facing app: appointments, queue status, lab reports, prescriptions, ABHA PHR, teleconsult, bill payment.",
     status: "inactive", enabled: false,
     fields: [
-      { key: "app_name",        label: "App Display Name",             type: "text",   value: "", placeholder: "e.g. Chenna Reddy Health" },
+      { key: "app_name",        label: "App Display Name",             type: "text",   value: "", placeholder: "e.g. City General Health" },
       { key: "app_logo_url",    label: "App Logo URL",                 type: "text",   value: "", placeholder: "https://..." },
       { key: "enable_teleconsult",label: "Enable teleconsult in app",  type: "toggle", value: true },
       { key: "enable_reports",  label: "Lab/radiology report download", type: "toggle", value: true },

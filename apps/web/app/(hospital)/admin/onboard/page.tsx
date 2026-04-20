@@ -130,7 +130,7 @@ export default function OnboardPage() {
               <div className="grid grid-cols-2 gap-5">
                 <div>
                   <label className={labelCls}>Legal Hospital Name *</label>
-                  <input className={inputCls} placeholder="e.g. Chenna Reddy Hospitals Pvt. Ltd."
+                  <input className={inputCls} placeholder="e.g. City General Hospitals Pvt. Ltd."
                     value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
                 </div>
                 <div>

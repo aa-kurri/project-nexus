@@ -39,7 +39,8 @@ type MenuItem = {
   key:   string;
   label: string;
   sub?:  string;
-  Icon:  React.ComponentType<{ size: number; color: string }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Icon:  React.ElementType<any>;
   color: string;
   route?: string;
   action?: () => void;

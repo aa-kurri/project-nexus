@@ -16,13 +16,13 @@ const STATES = [
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
 ];
 const CONSULTANTS = [
-  "Dr. Chenna Reddy (Orthopaedic)",
+  "Dr. Vikram Patel (Orthopaedic)",
   "Dr. Vasantha Raya (Gynaecology)",
   "Dr. Suresh Babu (General Medicine)",
   "Dr. Priya Nair (Paediatrics)",
   "Dr. Ramesh Kumar (Cardiology)",
 ];
-const REF_DOCTORS = ["None", "Dr. Ravi Shankar", "Dr. Anand Murthy", "Dr. Latha Devi", "Dr. Kishore Reddy"];
+const REF_DOCTORS = ["None", "Dr. Ravi Shankar", "Dr. Anand Murthy", "Dr. Latha Devi", "Dr. Kishore Rao"];
 
 function today() {
   return new Date().toISOString().split("T")[0];

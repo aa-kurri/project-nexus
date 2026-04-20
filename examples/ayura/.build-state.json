@@ -50,11 +50,12 @@
     "S-AI-SCRIBE-LIVE",
     "S-AI-COPILOT-RAG",
     "S-AUTH-FLOW",
-    "S-IPD-NURSE"
+    "S-IPD-NURSE",
+    "S-OPD-REALTIME"
   ],
   "skipped": [
     "S-REPORT-MIS"
   ],
-  "last_run": "2026-04-16T13:02:36.677Z",
-  "last_slug": "S-IPD-NURSE"
+  "last_run": "2026-04-20T02:29:14.912Z",
+  "last_slug": "S-OPD-REALTIME"
 }

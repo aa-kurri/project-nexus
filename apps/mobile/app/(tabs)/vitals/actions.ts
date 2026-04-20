@@ -1,109 +1,120 @@
-"use server";
-// Server actions for vitals tab.
-// All queries and mutations are tenant-scoped — jwt_tenant() enforced by RLS.
-
+// vitals/actions.ts — real Supabase implementation
 import { supabase } from "../../../lib/supabase";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
 export interface VitalsPayload {
-  patientId: string;
-  temp: number | null;      // Celsius
-  spo2: number | null;      // Percentage
-  rr: number | null;        // Respirations per minute
-  hr: number | null;        // Heart rate in beats per minute
-  pain: number | null;      // Pain score 0-10
-  sysBp: number | null;     // Systolic blood pressure
-  diaBp: number | null;     // Diastolic blood pressure
+  patientId:   string;
+  encounterId?: string;
+  temp?:   number;
+  spo2?:   number;
+  rr?:     number;
+  hr?:     number;
+  pain?:   number;
+  sysBp?:  number;
+  diaBp?:  number;
 }
 
-export interface VitalsObservation {
-  id: string;
-  patientId: string;
-  recordedAt: string;
-  temp: number | null;
-  spo2: number | null;
-  rr: number | null;
-  hr: number | null;
-  pain: number | null;
-  sysBp: number | null;
-  diaBp: number | null;
+interface ObsRow {
+  patient_id:   string;
+  encounter_id?: string;
+  code:          string;
+  display:       string;
+  value_num:     number;
+  value_unit:    string;
+  effective_at:  string;
+  status:        string;
 }
 
-// ── Actions ────────────────────────────────────────────────────────────────
+const LOINC = [
+  { key: "temp",  code: "8310-5",  display: "Body temperature",       unit: "°C"    },
+  { key: "spo2",  code: "59408-5", display: "Oxygen saturation",       unit: "%"     },
+  { key: "rr",    code: "9279-1",  display: "Respiratory rate",        unit: "/min"  },
+  { key: "hr",    code: "8867-4",  display: "Heart rate",              unit: "bpm"   },
+  { key: "pain",  code: "72514-3", display: "Pain severity (NRS)",     unit: "score" },
+  { key: "sysBp", code: "8480-6",  display: "Systolic blood pressure", unit: "mmHg"  },
+  { key: "diaBp", code: "8462-4",  display: "Diastolic blood pressure",unit: "mmHg"  },
+] as const;
 
-/**
- * Save vital signs for a patient.
- * Inserts into observations table with category='vital-signs'.
- * Each vital sign gets its own LOINC-coded observation row.
- *
- * TODO: implement with Supabase:
- *   - Create observation rows for each vital (temp, SpO2, RR, HR, BP, pain)
- *   - Use LOINC codes: 8310-5 (body temp), 59408-5 (SpO2), 9279-1 (RR),
- *     8867-4 (HR), 8480-6 (SBP), 8462-4 (DBP), 72514-3 (pain score)
- *   - Set effective_at = now(), category = 'vital-signs'
- *   - Insert into observations table with tenant_id from jwt_tenant()
- *   - RLS policy ensures tenant isolation
- */
-export async function saveVitals(payload: VitalsPayload): Promise<VitalsObservation> {
-  // TODO: replace with real Supabase insert
-  console.log("[VITALS] Save vitals stub called:", payload);
+/** Insert one FHIR Observation row per vital sign provided */
+export async function saveVitals(payload: VitalsPayload): Promise<void> {
+  const now = new Date().toISOString();
+  const rows: ObsRow[] = [];
 
-  // For now, simulate success after a delay
-  await new Promise((r) => setTimeout(r, 1000));
+  for (const col of LOINC) {
+    const val = (payload as any)[col.key];
+    if (val == null || isNaN(val)) continue;
+    rows.push({
+      patient_id:   payload.patientId,
+      encounter_id: payload.encounterId,
+      code:         col.code,
+      display:      col.display,
+      value_num:    val,
+      value_unit:   col.unit,
+      effective_at: now,
+      status:       "final",
+    });
+  }
 
-  return {
-    id: `obs-${Date.now()}`,
-    patientId: payload.patientId,
-    recordedAt: new Date().toISOString(),
-    temp: payload.temp,
-    spo2: payload.spo2,
-    rr: payload.rr,
-    hr: payload.hr,
-    pain: payload.pain,
-    sysBp: payload.sysBp,
-    diaBp: payload.diaBp,
-  };
+  if (rows.length === 0) throw new Error("At least one vital value is required");
+
+  const { error } = await supabase.from("observations").insert(rows);
+  if (error) throw new Error(error.message);
 }
 
-/**
- * Fetch vitals queue for the current nursing staff (patients in their ward).
- *
- * TODO: implement with Supabase:
- *   SELECT p.id, p.full_name, b.bed_number, b.ward_name,
- *          MAX(o.effective_at) AS last_recorded,
- *          EXTRACT(EPOCH FROM (NOW() - MAX(o.effective_at))) / 3600 AS hours_since
- *   FROM patients p
- *   JOIN admissions a ON a.patient_id = p.id AND a.status = 'admitted'
- *   JOIN beds b ON b.id = a.bed_id
- *   LEFT JOIN observations o ON o.patient_id = p.id AND o.category = 'vital-signs'
- *   WHERE p.tenant_id = jwt_tenant()
- *   GROUP BY p.id, p.full_name, b.bed_number, b.ward_name
- *   HAVING EXTRACT(EPOCH FROM (NOW() - MAX(o.effective_at))) / 3600 > 4
- *   OR MAX(o.effective_at) IS NULL
- *   ORDER BY hours_since DESC
- */
-export async function fetchVitalsQueue(): Promise<any[]> {
-  // TODO: replace with real Supabase query
-  console.log("[VITALS] Fetch vitals queue stub called");
-  return [];
+export interface VitalsQueueItem {
+  patient_id:    string;
+  patient_name:  string;
+  bed_label:     string;
+  last_recorded: string | null;
+  overdue:       boolean;
 }
 
 /**
- * Fetch latest vital signs for a specific patient.
- *
- * TODO: implement with Supabase:
- *   SELECT DISTINCT ON (p.id)
- *          o.id, o.patient_id, o.effective_at,
- *          o.value_numeric, o.code
- *   FROM observations o
- *   WHERE o.patient_id = $patientId AND o.category = 'vital-signs'
- *         AND o.tenant_id = jwt_tenant()
- *   ORDER BY o.effective_at DESC
- *   LIMIT 7 (one for each vital type)
+ * Fetch admitted patients whose vitals haven't been recorded in >4 hours.
+ * Uses a Postgres view if present, otherwise two-step query.
  */
-export async function fetchPatientVitals(patientId: string): Promise<VitalsObservation | null> {
-  // TODO: replace with real Supabase query
-  console.log("[VITALS] Fetch patient vitals stub called for:", patientId);
-  return null;
+export async function fetchVitalsQueue(tenantId: string): Promise<VitalsQueueItem[]> {
+  // Get all admitted patients with their beds
+  const { data: admitted, error: e1 } = await supabase
+    .from("admissions")
+    .select(`
+      patient_id,
+      patients ( full_name ),
+      beds ( label )
+    `)
+    .eq("tenant_id", tenantId)
+    .eq("status", "admitted");
+
+  if (e1) throw new Error(e1.message);
+  if (!admitted || admitted.length === 0) return [];
+
+  const patientIds = admitted.map((a: any) => a.patient_id);
+
+  // Get last vitals time for each patient
+  const { data: lastObs } = await supabase
+    .from("observations")
+    .select("patient_id, effective_at")
+    .eq("tenant_id", tenantId)
+    .eq("code", "8867-4") // HR as proxy for "vitals recorded"
+    .in("patient_id", patientIds)
+    .order("effective_at", { ascending: false });
+
+  const lastMap: Record<string, string> = {};
+  for (const obs of (lastObs ?? [])) {
+    if (!lastMap[(obs as any).patient_id]) {
+      lastMap[(obs as any).patient_id] = (obs as any).effective_at;
+    }
+  }
+
+  const now = Date.now();
+  return admitted.map((row: any) => {
+    const last = lastMap[row.patient_id] ?? null;
+    const hoursAgo = last ? (now - new Date(last).getTime()) / 3600000 : Infinity;
+    return {
+      patient_id:    row.patient_id,
+      patient_name:  row.patients?.full_name ?? "Unknown",
+      bed_label:     row.beds?.label ?? "—",
+      last_recorded: last,
+      overdue:       hoursAgo > 4,
+    };
+  });
 }

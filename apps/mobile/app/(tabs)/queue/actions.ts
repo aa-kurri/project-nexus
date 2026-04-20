@@ -1,91 +1,83 @@
-"use server";
+// queue/actions.ts — real Supabase implementation
+import { supabase } from "../../../lib/supabase";
+import { useAuthStore } from "../../../store/authStore";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+export type QueueStatus = "waiting" | "in_progress" | "done" | "skipped";
 
-export interface QueueTokenRow {
-  id: string;
+export interface QueueToken {
+  id:           string;
   token_number: number;
-  status: "waiting" | "next" | "in-consult" | "done" | "no-show";
-  called_at: string | null;
-  patient: {
-    id: string;
-    full_name: string;
-    mrn: string;
-  };
-  encounter: {
-    id: string;
-    reason: string | null;
-  } | null;
+  status:       QueueStatus;
+  called_at:    string | null;
+  patient_id:   string;
+  patient_name: string;
+  complaint:    string | null;
+  created_at:   string;
 }
 
-// ─── Actions ──────────────────────────────────────────────────────────────────
+/** Fetch today's queue for the logged-in practitioner */
+export async function fetchTodayQueue(practitionerId: string, tenantId: string): Promise<QueueToken[]> {
+  const today = new Date().toISOString().slice(0, 10);
 
-/**
- * Fetch today's OPD queue for the authenticated doctor.
- *
- * TODO: implement with Supabase client:
- *   supabase
- *     .from("queue_tokens")
- *     .select(`
- *       id, token_number, status, called_at,
- *       patient:patients(id, full_name, mrn),
- *       encounter:encounters(id, reason)
- *     `)
- *     .eq("tenant_id", jwtTenant())
- *     .eq("practitioner_id", auth.uid())
- *     .eq("token_date", new Date().toISOString().split("T")[0])
- *     .neq("status", "done")
- *     .order("token_number", { ascending: true })
- */
-export async function fetchTodayQueue(): Promise<QueueTokenRow[]> {
-  // TODO: replace with real Supabase query
-  throw new Error("fetchTodayQueue: not yet implemented");
+  const { data, error } = await supabase
+    .from("queue_tokens")
+    .select(`
+      id, token_number, status, called_at, created_at,
+      patient_id,
+      patients ( full_name ),
+      encounters ( reason )
+    `)
+    .eq("tenant_id", tenantId)
+    .eq("practitioner_id", practitionerId)
+    .eq("token_date", today)
+    .order("token_number", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row: any) => ({
+    id:           row.id,
+    token_number: row.token_number,
+    status:       row.status as QueueStatus,
+    called_at:    row.called_at,
+    patient_id:   row.patient_id,
+    patient_name: row.patients?.full_name ?? "Unknown",
+    complaint:    row.encounters?.reason ?? null,
+    created_at:   row.created_at,
+  }));
 }
 
-/**
- * Advance the queue: mark the current in-consult token as done,
- * set the next waiting token to in-consult, record called_at.
- *
- * TODO: implement with Supabase RPC:
- *   supabase.rpc("call_next_patient", {
- *     p_practitioner_id: auth.uid(),
- *     p_tenant_id: jwtTenant(),
- *   })
- *   — RPC atomically transitions statuses and returns the new active token.
- */
-export async function callNextPatient(): Promise<QueueTokenRow | null> {
-  // TODO: replace with real Supabase RPC call
-  throw new Error("callNextPatient: not yet implemented");
-}
+/** Advance: mark the next waiting token as in_progress */
+export async function callNextPatient(practitionerId: string, tenantId: string): Promise<string | null> {
+  const today = new Date().toISOString().slice(0, 10);
 
-/**
- * Mark a specific token as no-show.
- *
- * TODO: implement:
- *   supabase.from("queue_tokens").update({ status: "no-show" })
- *     .eq("id", tokenId).eq("tenant_id", jwtTenant())
- */
-export async function markNoShow(tokenId: string): Promise<void> {
-  // TODO: replace with real Supabase update
-  throw new Error("markNoShow: not yet implemented");
-}
+  // Find the next waiting token
+  const { data: next } = await supabase
+    .from("queue_tokens")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("practitioner_id", practitionerId)
+    .eq("token_date", today)
+    .eq("status", "waiting")
+    .order("token_number", { ascending: true })
+    .limit(1)
+    .single();
 
-/**
- * Check drug interactions for all patients in today's queue.
- * Returns pairs of potentially interacting active medication_requests.
- *
- * TODO: implement:
- *   - collect patient_ids from today's queue_tokens
- *   - query medication_requests where patient_id IN (...) AND status = 'active'
- *   - call external interaction API (e.g., OpenFDA /drug/interaction) or
- *     maintain local drug_interactions table
- */
-export async function checkQueueInteractions(patientIds: string[]): Promise<{
-  patientId: string;
-  drug1: string;
-  drug2: string;
-  severity: string;
-}[]> {
-  // TODO: replace with real interaction check
-  throw new Error("checkQueueInteractions: not yet implemented");
+  if (!next) return null;
+
+  // Mark current in_progress as done
+  await supabase
+    .from("queue_tokens")
+    .update({ status: "done" })
+    .eq("tenant_id", tenantId)
+    .eq("practitioner_id", practitionerId)
+    .eq("token_date", today)
+    .eq("status", "in_progress");
+
+  // Advance next to in_progress
+  await supabase
+    .from("queue_tokens")
+    .update({ status: "in_progress", called_at: new Date().toISOString() })
+    .eq("id", next.id);
+
+  return next.id;
 }

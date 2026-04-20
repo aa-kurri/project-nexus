@@ -1,47 +1,57 @@
-import { View, Text } from "react-native";
-
-const PRIMARY = "#0F766E";
+import { View, Text, Pressable } from "react-native";
+import { Building2, Bell } from "lucide-react-native";
+import { useAuthStore } from "../../store/authStore";
 
 interface TopBarProps {
-  title: string;
-  subtitle?: string;
-  /** Render a tinted header band (admin portal style). Default: false */
-  tinted?: boolean;
+  title?: string;
+  showHospital?: boolean;
 }
 
-export function TopBar({ title, subtitle, tinted = false }: TopBarProps) {
+export default function TopBar({ title, showHospital = true }: TopBarProps) {
+  const { profile, availableTenants, activeTenantId, switchTenant } = useAuthStore();
+
+  const hospitalName =
+    availableTenants.find((t) => t.id === activeTenantId)?.name ??
+    profile?.tenant_name ??
+    "Ayura OS";
+
   return (
     <View
       style={{
-        paddingTop: 56,
+        backgroundColor: "hsl(220, 13%, 9%)",
+        borderBottomWidth: 1,
+        borderBottomColor: "#1e2332",
+        paddingTop: 52,
+        paddingBottom: 12,
         paddingHorizontal: 20,
-        paddingBottom: tinted ? 20 : 16,
-        backgroundColor: tinted ? PRIMARY : undefined,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
       }}
     >
-      {subtitle && (
-        <Text
-          style={{
-            color: tinted ? "rgba(255,255,255,0.75)" : "#6b7280",
-            fontSize: 12,
-            fontWeight: "600",
-            letterSpacing: 0.4,
-            textTransform: "uppercase",
-            marginBottom: 2,
-          }}
-        >
-          {subtitle}
+      <View style={{ flex: 1 }}>
+        {showHospital && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 1 }}>
+            <Building2 size={11} color="#6b7280" />
+            <Text style={{ color: "#6b7280", fontSize: 11, fontWeight: "500" }}>
+              {hospitalName}
+            </Text>
+          </View>
+        )}
+        <Text style={{ color: "#f9fafb", fontSize: 18, fontWeight: "700" }}>
+          {title ?? "Ayura OS"}
         </Text>
-      )}
-      <Text
+      </View>
+
+      <Pressable
         style={{
-          color: tinted ? "#fff" : "#f9fafb",
-          fontSize: 22,
-          fontWeight: "700",
+          width: 36, height: 36, borderRadius: 10,
+          backgroundColor: "rgba(255,255,255,0.05)",
+          alignItems: "center", justifyContent: "center",
         }}
       >
-        {title}
-      </Text>
+        <Bell size={18} color="#9ca3af" />
+      </Pressable>
     </View>
   );
 }

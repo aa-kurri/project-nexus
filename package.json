@@ -16,7 +16,11 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "crawl:test": "tsx scripts/test-crawl.ts",
-    "auto-build": "node --env-file=.env.local scripts/meta-builder.js"
+    "auto-build": "node --env-file=.env.local scripts/meta-builder.js",
+    "migration:templates": "cd scripts/migration && npx tsx run.ts templates",
+    "migration:discover": "cd scripts/migration && npx tsx run.ts discover --source=sql",
+    "migration:dry": "cd scripts/migration && npx tsx run.ts --dry-run",
+    "migration:run": "cd scripts/migration && npx tsx run.ts"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

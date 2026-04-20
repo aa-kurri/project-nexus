@@ -28,15 +28,15 @@ const GATEWAY_STATUS = [
 ];
 
 const INITIAL_NOTIFS: WaNotif[] = [
-  { key: "appt_reminder",    label: "Appointment Reminder",      desc: "24h before appointment",                    templateId: "appt_reminder_v2",   enabled: true,  sent24h: 42,  delivered: 41, preview: "Hi {{name}}, your appointment with {{doctor}} at Chenna Reddy Hospitals is confirmed for {{date}} at {{time}}. Reply HELP for assistance." },
+  { key: "appt_reminder",    label: "Appointment Reminder",      desc: "24h before appointment",                    templateId: "appt_reminder_v2",   enabled: true,  sent24h: 42,  delivered: 41, preview: "Hi {{name}}, your appointment with {{doctor}} at Ayura Health is confirmed for {{date}} at {{time}}. Reply HELP for assistance." },
   { key: "token_call",       label: "OPD Token Call",            desc: "When patient's token is called",            templateId: "opd_token_call_v1",  enabled: true,  sent24h: 118, delivered: 115,preview: "Hi {{name}}, your token {{token}} has been called at {{counter}}. Please proceed to the OPD counter. ({{hospital}})" },
-  { key: "lab_ready",        label: "Lab Report Ready",          desc: "On report validation",                      templateId: "lab_report_v3",      enabled: true,  sent24h: 38,  delivered: 37, preview: "Your lab report is ready. Download securely: {{link}} (valid 48h). — Chenna Reddy Hospitals" },
+  { key: "lab_ready",        label: "Lab Report Ready",          desc: "On report validation",                      templateId: "lab_report_v3",      enabled: true,  sent24h: 38,  delivered: 37, preview: "Your lab report is ready. Download securely: {{link}} (valid 48h). — Ayura Health" },
   { key: "discharge_summary",label: "Discharge Summary",         desc: "On patient discharge",                      templateId: "discharge_v2",       enabled: true,  sent24h: 9,   delivered: 9,  preview: "Dear {{name}}, your discharge summary is attached. Please follow the advice of {{doctor}}. For queries: {{helpline}}" },
-  { key: "bill_receipt",     label: "Bill Receipt",              desc: "On payment confirmation",                   templateId: "bill_receipt_v1",    enabled: true,  sent24h: 31,  delivered: 30, preview: "Payment of ₹{{amount}} received. Receipt No: {{receipt_no}}. Thank you — Chenna Reddy Hospitals" },
-  { key: "admit_family",     label: "IPD Admission Alert",       desc: "Notify family number on admit",             templateId: "ipd_admit_v1",       enabled: false, sent24h: 0,   delivered: 0,  preview: "{{patient}} has been admitted to {{ward}} at Chenna Reddy Hospitals. For information: {{helpline}}" },
+  { key: "bill_receipt",     label: "Bill Receipt",              desc: "On payment confirmation",                   templateId: "bill_receipt_v1",    enabled: true,  sent24h: 31,  delivered: 30, preview: "Payment of ₹{{amount}} received. Receipt No: {{receipt_no}}. Thank you — Ayura Health" },
+  { key: "admit_family",     label: "IPD Admission Alert",       desc: "Notify family number on admit",             templateId: "ipd_admit_v1",       enabled: false, sent24h: 0,   delivered: 0,  preview: "{{patient}} has been admitted to {{ward}} at Ayura Health. For information: {{helpline}}" },
   { key: "pre_auth_status",  label: "Pre-Auth Status Update",    desc: "On TPA approval / rejection",               templateId: "preauth_status_v1",  enabled: true,  sent24h: 4,   delivered: 4,  preview: "Your pre-authorisation ({{auth_id}}) has been {{status}} by {{tpa}}. Amount: {{amount}}." },
-  { key: "otp",              label: "OTP Verification",          desc: "For patient portal login",                  templateId: "otp_v2",             enabled: false, sent24h: 0,   delivered: 0,  preview: "Your OTP for Chenna Reddy Hospitals patient portal: {{otp}}. Valid for 5 minutes. Do not share." },
-  { key: "survey",           label: "Post-Discharge Survey",     desc: "Triggered by survey module",                templateId: "survey_v1",          enabled: true,  sent24h: 7,   delivered: 6,  preview: "Hi {{name}}, how was your experience at Chenna Reddy Hospitals? Rate us: {{link}} (30 sec)" },
+  { key: "otp",              label: "OTP Verification",          desc: "For patient portal login",                  templateId: "otp_v2",             enabled: false, sent24h: 0,   delivered: 0,  preview: "Your OTP for Ayura Health patient portal: {{otp}}. Valid for 5 minutes. Do not share." },
+  { key: "survey",           label: "Post-Discharge Survey",     desc: "Triggered by survey module",                templateId: "survey_v1",          enabled: true,  sent24h: 7,   delivered: 6,  preview: "Hi {{name}}, how was your experience at Ayura Health? Rate us: {{link}} (30 sec)" },
 ];
 
 export default function WhatsappPage() {
@@ -118,7 +118,7 @@ export default function WhatsappPage() {
                       <div className="bg-black/30 rounded-xl p-4 max-w-sm">
                         <div className="flex items-center gap-2 mb-2">
                           <MessageCircle className="h-4 w-4 text-[#0F766E]" />
-                          <span className="text-xs font-bold text-[#0F766E]">Chenna Reddy Hospitals</span>
+                          <span className="text-xs font-bold text-[#0F766E]">Ayura Health</span>
                         </div>
                         <p className="text-xs text-slate-300 leading-relaxed">{n.preview}</p>
                       </div>

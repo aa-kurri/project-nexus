@@ -1,0 +1,128 @@
+{
+  "sourceSystem": "example_hospital_hms",
+  "entities": [
+    {
+      "entity": "patient",
+      "sourceTable": "tbl_patients",
+      "sourceIdColumn": "patient_id",
+      "columns": [
+        { "from": "patient_name", "to": "fullName", "transform": "trim" },
+        { "from": "mobile_no", "to": "phone", "transform": "phone_e164" },
+        { "from": "email_id", "to": "email" },
+        { "from": "date_of_birth", "to": "dob", "transform": "date" },
+        { "from": "sex", "to": "gender", "transform": "gender" },
+        { "from": "street_address", "to": "addressLine" },
+        { "from": "city", "to": "city" },
+        { "from": "state", "to": "state" },
+        { "from": "pin", "to": "pincode" },
+        { "from": "reg_no", "to": "mrn" },
+        { "from": "abha_number", "to": "abhaId" },
+        { "from": "blood_grp", "to": "bloodGroup" }
+      ]
+    },
+    {
+      "entity": "encounter",
+      "sourceTable": "tbl_visits",
+      "sourceIdColumn": "visit_id",
+      "columns": [
+        { "from": "patient_id", "to": "patientSourceId" },
+        { "from": "doctor_id", "to": "practitionerSourceId" },
+        { "from": "dept_type", "to": "class", "default": "opd" },
+        { "from": "complaint", "to": "reason" },
+        { "from": "visit_datetime", "to": "startedAt", "transform": "datetime" },
+        { "from": "discharge_datetime", "to": "endedAt", "transform": "datetime" },
+        { "from": "visit_status", "to": "status", "default": "finished" }
+      ]
+    },
+    {
+      "entity": "medication_request",
+      "sourceTable": "tbl_prescriptions",
+      "sourceIdColumn": "rx_id",
+      "columns": [
+        { "from": "patient_id", "to": "patientSourceId" },
+        { "from": "visit_id", "to": "encounterSourceId" },
+        { "from": "doctor_id", "to": "prescriberSourceId" },
+        { "from": "medicine_name", "to": "drugName", "transform": "trim" },
+        { "from": "dose_strength", "to": "strength" },
+        { "from": "admin_route", "to": "route", "default": "oral" },
+        { "from": "frequency", "to": "dosage" },
+        { "from": "rx_date", "to": "authoredAt", "transform": "datetime" }
+      ]
+    },
+    {
+      "entity": "service_request",
+      "sourceTable": "tbl_lab_orders",
+      "sourceIdColumn": "order_id",
+      "columns": [
+        { "from": "patient_id", "to": "patientSourceId" },
+        { "from": "visit_id", "to": "encounterSourceId" },
+        { "from": "ordered_by", "to": "requesterSourceId" },
+        { "from": "test_code", "to": "code" },
+        { "from": "test_description", "to": "display" },
+        { "from": "department", "to": "category", "default": "lab" },
+        { "from": "order_date", "to": "requestedAt", "transform": "datetime" },
+        { "from": "order_status", "to": "status", "default": "completed" }
+      ]
+    },
+    {
+      "entity": "observation",
+      "sourceTable": "tbl_lab_results",
+      "sourceIdColumn": "result_id",
+      "columns": [
+        { "from": "patient_id", "to": "patientSourceId" },
+        { "from": "visit_id", "to": "encounterSourceId" },
+        { "from": "param_code", "to": "code" },
+        { "from": "param_name", "to": "display" },
+        { "from": "numeric_value", "to": "valueNum", "transform": "float" },
+        { "from": "unit_of_measure", "to": "valueUnit" },
+        { "from": "text_result", "to": "valueText" },
+        { "from": "normal_min", "to": "refLow", "transform": "float" },
+        { "from": "normal_max", "to": "refHigh", "transform": "float" },
+        { "from": "abnormal_flag", "to": "flag" },
+        { "from": "result_date", "to": "effectiveAt", "transform": "datetime" }
+      ]
+    },
+    {
+      "entity": "stock_item",
+      "sourceTable": "tbl_inventory",
+      "sourceIdColumn": "item_id",
+      "columns": [
+        { "from": "item_name", "to": "name", "transform": "trim" },
+        { "from": "generic_name", "to": "generic" },
+        { "from": "dosage_form", "to": "form" },
+        { "from": "strength", "to": "strength" },
+        { "from": "hsn", "to": "hsnSac" },
+        { "from": "gst_rate", "to": "gstPct", "transform": "float" },
+        { "from": "min_stock", "to": "reorderLevel", "transform": "int" }
+      ]
+    },
+    {
+      "entity": "bill",
+      "sourceTable": "tbl_invoices",
+      "sourceIdColumn": "invoice_id",
+      "columns": [
+        { "from": "patient_id", "to": "patientSourceId" },
+        { "from": "visit_id", "to": "encounterSourceId" },
+        { "from": "invoice_no", "to": "number" },
+        { "from": "net_amount", "to": "subtotal", "transform": "float" },
+        { "from": "tax_amount", "to": "taxTotal", "transform": "float" },
+        { "from": "gross_amount", "to": "grandTotal", "transform": "float" },
+        { "from": "invoice_date", "to": "finalizedAt", "transform": "datetime" },
+        { "from": "payment_status", "to": "status", "default": "paid" }
+      ]
+    },
+    {
+      "entity": "user",
+      "sourceTable": "tbl_users",
+      "sourceIdColumn": "user_id",
+      "columns": [
+        { "from": "full_name", "to": "fullName", "transform": "trim" },
+        { "from": "email", "to": "email" },
+        { "from": "phone", "to": "phone", "transform": "phone_e164" },
+        { "from": "user_role", "to": "role" },
+        { "from": "department", "to": "department" },
+        { "from": "active_flag", "to": "isActive", "transform": "boolean" }
+      ]
+    }
+  ]
+}

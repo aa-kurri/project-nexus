@@ -1,14 +1,13 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
-import { CheckSquare, Clock, AlertCircle, ChevronRight } from "lucide-react-native";
-import { useState } from "react";
-import { completeTask, fetchTaskList } from "./actions";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { CheckSquare, Clock, AlertCircle } from "lucide-react-native";
+import { useAuthStore } from "../../../store/authStore";
+import { fetchMyTasks, completeTask, type Task, type Priority } from "./actions";
 
 const BG      = "hsl(220, 15%, 6%)";
 const SURFACE = "hsl(220, 13%, 9%)";
 const PRIMARY = "#0F766E";
 const BORDER  = "#1e2332";
-
-type Priority = "urgent" | "normal" | "low";
 
 const PRIORITY_COLOR: Record<Priority, string> = {
   urgent: "#ef4444",
@@ -16,141 +15,137 @@ const PRIORITY_COLOR: Record<Priority, string> = {
   low:    "#6b7280",
 };
 
-// TODO: fetch from a tasks table (or service_requests with category='nursing_task')
-//       filtered by assignee_id = auth.uid() and status != 'completed'
-const MOCK_TASKS = [
-  { id: "t1", title: "Administer IV Drip",    patient: "Ramesh Kumar / GA-01", due: "Now",      priority: "urgent" as Priority, done: false },
-  { id: "t2", title: "Record Post-op Vitals", patient: "Anita Verma / ICU-01", due: "10:30",    priority: "normal" as Priority, done: false },
-  { id: "t3", title: "Change Wound Dressing",  patient: "Priya Sharma / GA-04", due: "12:00",    priority: "normal" as Priority, done: false },
-  { id: "t4", title: "Collect Blood Sample",  patient: "Suresh Patel / GA-02", due: "14:00",    priority: "low"    as Priority, done: true  },
-];
+function dueLabel(dueAt: string | null): string {
+  if (!dueAt) return "";
+  const d = new Date(dueAt);
+  const now = new Date();
+  if (d < now) return "OVERDUE";
+  return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function TasksScreen() {
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const { profile } = useAuthStore();
+
+  const [tasks,      setTasks]      = useState<Task[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [completing, setCompleting] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error,      setError]      = useState<string | null>(null);
 
-  const pending = MOCK_TASKS.filter(t => !completed.has(t.id));
-  const completedTasks = MOCK_TASKS.filter(t => completed.has(t.id));
-
-  async function handleCompleteTask(taskId: string) {
-    setCompleting(taskId);
-    setError(null);
+  const load = useCallback(async (soft = false) => {
+    if (!profile) return;
+    soft ? setRefreshing(true) : setLoading(true);
     try {
-      await completeTask({ taskId });
-      setCompleted((prev) => new Set([...prev, taskId]));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to complete task");
+      const data = await fetchMyTasks(profile.id, profile.tenant_id);
+      setTasks(data);
+      setError(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [profile]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleComplete = async (taskId: string) => {
+    setCompleting(taskId);
+    try {
+      await completeTask(taskId);
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setCompleting(null);
     }
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={PRIMARY} size="large" />
+      </View>
+    );
   }
+
+  const pending  = tasks.filter(t => t.status !== "completed");
+  const urgentN  = pending.filter(t => t.priority === "urgent").length;
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: BG }}
       contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={PRIMARY} />}
     >
       {/* Header */}
-      <View style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 20,
-        backgroundColor: PRIMARY }}>
+      <View style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 20, backgroundColor: PRIMARY }}>
         <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: "600" }}>
           My Tasks — Today
         </Text>
         <Text style={{ color: "#fff", fontSize: 22, fontWeight: "700", marginTop: 2 }}>
-          {pending.length} pending
+          {pending.length} pending{urgentN > 0 ? ` · ${urgentN} urgent` : ""}
         </Text>
       </View>
 
-      {/* Pending tasks */}
+      {error && (
+        <View style={{ margin: 16, backgroundColor: "#ef444420", borderRadius: 12,
+          borderWidth: 1, borderColor: "#f87171", padding: 12 }}>
+          <Text style={{ color: "#f87171", fontSize: 13 }}>{error}</Text>
+        </View>
+      )}
+
       <View style={{ marginHorizontal: 16, marginTop: 16, borderRadius: 16,
         backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, overflow: "hidden" }}>
         {pending.length === 0 ? (
           <View style={{ padding: 24, alignItems: "center" }}>
-            <Text style={{ color: "#4b5563" }}>All tasks done for today!</Text>
+            <CheckSquare size={28} color="#059669" />
+            <Text style={{ color: "#059669", marginTop: 8, fontWeight: "600" }}>All tasks done!</Text>
           </View>
-        ) : pending.map((task, i) => (
-          <Pressable
-            key={task.id}
-            onPress={() => handleCompleteTask(task.id)}
-            disabled={completing === task.id}
-            style={({ pressed }) => ({
-              flexDirection: "row", alignItems: "center",
-              paddingHorizontal: 16, paddingVertical: 14,
-              borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER,
-              opacity: pressed ? 0.7 : completing === task.id ? 0.6 : 1,
-            })}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 10,
-              backgroundColor: `${PRIORITY_COLOR[task.priority]}20`,
-              alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              {completing === task.id ? (
-                <ActivityIndicator color={PRIORITY_COLOR[task.priority]} size="small" />
-              ) : task.priority === "urgent" ? (
-                <AlertCircle size={18} color={PRIORITY_COLOR[task.priority]} />
-              ) : (
-                <CheckSquare size={18} color={PRIORITY_COLOR[task.priority]} />
-              )}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: "#f9fafb", fontWeight: "600" }}>{task.title}</Text>
-              <Text style={{ color: "#6b7280", fontSize: 12, marginTop: 2 }}>{task.patient}</Text>
-            </View>
-            <View style={{ alignItems: "flex-end", gap: 4 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Clock size={11} color="#6b7280" />
-                <Text style={{ color: "#6b7280", fontSize: 12 }}>{task.due}</Text>
+        ) : pending.map((task, i) => {
+          const label = dueLabel(task.due_at);
+          const isOverdue = label === "OVERDUE";
+          return (
+            <Pressable
+              key={task.id}
+              onPress={() => handleComplete(task.id)}
+              disabled={completing === task.id}
+              style={({ pressed }) => ({
+                flexDirection: "row", alignItems: "center",
+                paddingHorizontal: 16, paddingVertical: 14,
+                borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER,
+                opacity: pressed || completing === task.id ? 0.6 : 1,
+              })}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 10,
+                backgroundColor: `${PRIORITY_COLOR[task.priority]}20`,
+                alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                {completing === task.id
+                  ? <ActivityIndicator color={PRIORITY_COLOR[task.priority]} size="small" />
+                  : task.priority === "urgent"
+                    ? <AlertCircle size={18} color={PRIORITY_COLOR[task.priority]} />
+                    : <CheckSquare size={18} color={PRIORITY_COLOR[task.priority]} />}
               </View>
-              {completing !== task.id && <ChevronRight size={14} color="#4b5563" />}
-            </View>
-          </Pressable>
-        ))}
+
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#f9fafb", fontWeight: "600" }}>{task.title}</Text>
+                <Text style={{ color: "#6b7280", fontSize: 12, marginTop: 2 }}>
+                  {task.patient_name}{task.bed_label ? ` · ${task.bed_label}` : ""}
+                </Text>
+              </View>
+
+              {label ? (
+                <Text style={{
+                  color: isOverdue ? "#ef4444" : "#6b7280",
+                  fontSize: 12, fontWeight: isOverdue ? "700" : "400",
+                }}>
+                  {label}
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
       </View>
-
-      {/* Error banner */}
-      {error && (
-        <View style={{ marginHorizontal: 16, marginTop: 16,
-          backgroundColor: "#ef444420", borderRadius: 12,
-          borderWidth: 1, borderColor: "#f87171", padding: 12 }}>
-          <Text style={{ color: "#f87171", fontSize: 13, fontWeight: "600" }}>{error}</Text>
-        </View>
-      )}
-
-      {/* Completed section */}
-      {completedTasks.length > 0 && (
-        <>
-          <Text style={{ color: "#4b5563", fontSize: 12, fontWeight: "600",
-            textTransform: "uppercase", letterSpacing: 0.5,
-            marginHorizontal: 20, marginTop: 20, marginBottom: 10 }}>
-            Completed
-          </Text>
-          <View style={{ marginHorizontal: 16, borderRadius: 16,
-            backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER, overflow: "hidden" }}>
-            {completedTasks.map((task, i) => (
-              <View
-                key={task.id}
-                style={{
-                  flexDirection: "row", alignItems: "center",
-                  paddingHorizontal: 16, paddingVertical: 14,
-                  borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER,
-                  opacity: 0.5,
-                }}
-              >
-                <View style={{ width: 36, height: 36, borderRadius: 10,
-                  backgroundColor: "#05966920",
-                  alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                  <CheckSquare size={18} color="#059669" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#9ca3af", fontWeight: "600",
-                    textDecorationLine: "line-through" }}>{task.title}</Text>
-                  <Text style={{ color: "#4b5563", fontSize: 12, marginTop: 2 }}>{task.patient}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </>
-      )}
     </ScrollView>
   );
 }

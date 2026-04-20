@@ -56,7 +56,7 @@ export default function LimsDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6 pt-4 h-[300px]">
-                <DoctorBar name="Dr. Chenna Reddy" amount="₹1,16,500" percentage={85} />
+                <DoctorBar name="Dr. Vikram Patel" amount="₹1,16,500" percentage={85} />
                 <DoctorBar name="Dr. Vasantha" amount="₹92,500" percentage={65} />
                 <DoctorBar name="Dr. Srawani" amount="₹4,500" percentage={10} />
               </div>

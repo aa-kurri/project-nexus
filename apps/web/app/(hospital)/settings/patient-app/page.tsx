@@ -118,7 +118,7 @@ export default function PatientAppPage() {
                   <div className="h-32 w-32 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
                     <QrCode className="h-16 w-16 text-slate-600" />
                   </div>
-                  <p className="text-xs text-slate-500 text-center">Scan to download<br/>Chenna Reddy Health app</p>
+                  <p className="text-xs text-slate-500 text-center">Scan to download<br/>City General Health app</p>
                 </div>
                 <div className="space-y-2">
                   {[

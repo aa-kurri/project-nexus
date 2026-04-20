@@ -20,7 +20,7 @@ test.describe('Flow: Patient Registration & Queue', () => {
     
     // 4. Select Consultant
     // Since Select is a custom component, we find the select element or click the text
-    await page.locator('select').filter({ hasText: /Consultant/i }).selectOption({ label: 'Dr. Chenna Reddy (Orthopaedic)' });
+    await page.locator('select').filter({ hasText: /Consultant/i }).selectOption({ label: 'Dr. Vikram Patel (Orthopaedic)' });
     
     // 5. Submit
     await page.getByRole('button', { name: /REGISTER/i }).click();

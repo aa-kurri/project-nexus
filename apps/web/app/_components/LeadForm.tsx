@@ -56,7 +56,7 @@ export function LeadForm() {
         <label className="text-xs font-medium text-muted uppercase tracking-wide">Hospital / Clinic name *</label>
         <Input
           name="hospitalName"
-          placeholder="Apollo Hospitals, Chennai"
+          placeholder="Apollo Hospitals, Hyderabad"
           value={form.hospitalName}
           onChange={handleChange}
           required
