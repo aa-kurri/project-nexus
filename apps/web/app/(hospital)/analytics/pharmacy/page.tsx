@@ -1,96 +1,23 @@
 "use client";
-import React from "react";
+
+import { useState, useEffect, useTransition } from "react";
 import { TopBar } from "@/components/hospital/TopBar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { 
-  TrendingUp, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Activity, 
-  ArrowRightLeft,
-  PieChart as PieIcon,
-  BarChart3,
-  Flame,
-  Snowflake
-} from "lucide-react";
+import { Loader2, ArrowUpRight, ArrowDownRight, Flame, Snowflake, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getPharmacyStats, type PharmacyStats } from "./actions";
 
-export default function AnalyticsPharmacyPage() {
-  return (
-    <>
-      <TopBar 
-        title="Pharmacy Performance Analytics" 
-        action={{ label: "View MIS", href: "/analytics/mis" }}
-      />
-      <main className="p-8 space-y-8">
-        
-        {/* Core Sales KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Gross Sales" value="₹2,14,500" change="+18%" positive />
-          <StatCard title="Net Margin" value="22.5%" change="+2.4%" positive />
-          <StatCard title="Avg Prescription" value="₹420" change="-5%" positive={false} />
-          <StatCard title="Stock Turnover" value="1.2x" change="+0.1" positive />
-        </div>
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Sales Mix Donut */}
-          <Card className="lg:col-span-1 border-border/40 bg-surface/50 backdrop-blur-xl">
-             <CardHeader><CardTitle className="text-sm">Revenue Mix by Category</CardTitle></CardHeader>
-             <CardContent className="space-y-6 pt-4">
-                <ModernDonut percentage={45} label="Analgesics" amount="₹96K" color="bg-[#0F766E]" />
-                <div className="space-y-2">
-                   <LegendItem color="bg-blue-500" label="Antibiotics" value="30%" />
-                   <LegendItem color="bg-purple-500" label="Dermatology" value="15%" />
-                   <LegendItem color="bg-muted" label="Generic OTC" value="10%" />
-                </div>
-             </CardContent>
-          </Card>
-
-          {/* Sales Trend Bar Chart */}
-          <Card className="lg:col-span-2 border-border/40 bg-surface/50 backdrop-blur-xl">
-             <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-sm">Monthly Sales Trend</CardTitle>
-                <div className="flex gap-1">
-                   <div className="px-2 py-0.5 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-[10px] font-bold">REVENUE</div>
-                   <div className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-bold">QTY</div>
-                </div>
-             </CardHeader>
-             <CardContent className="h-[280px] flex items-end justify-around pb-4 pt-8 group">
-                {[45, 60, 40, 75, 90, 65, 80, 55, 100, 85, 70, 95].map((h, i) => (
-                  <div key={i} className="flex flex-col items-center gap-2 flex-1 w-full max-w-[20px]">
-                     <div 
-                       className="w-full bg-[#0F766E]/20 hover:bg-[#0F766E]/40 transition-all rounded-t-sm relative"
-                       style={{ height: `${h}%` }}
-                     >
-                        <div className="absolute inset-x-0 bottom-0 bg-[#0F766E]/40 h-1/2 rounded-t-sm" />
-                     </div>
-                     <span className="text-[8px] text-muted-foreground font-bold">M{i+1}</span>
-                  </div>
-                ))}
-             </CardContent>
-          </Card>
-        </div>
-
-        {/* Moving Items Heatmap */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           <MovementCard title="Fast Moving SKUs" icon={Flame} color="text-orange-500" items={[
-             { label: "Paracetamol 500", val: "840 units / day" },
-             { label: "Citrizine Tab", val: "420 units / day" }
-           ]} />
-           <MovementCard title="Slow Moving / Dead Stock" icon={Snowflake} color="text-blue-500" items={[
-             { label: "Complex Ortho Inject", val: "0.2 units / day" },
-             { label: "Rare Blood Factor IX", val: "0.01 units / day" }
-           ]} />
-        </div>
-
-      </main>
-    </>
-  );
+function fmt(n: number) {
+  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+  if (n >= 1000)   return `₹${(n / 1000).toFixed(1)}K`;
+  return `₹${n}`;
 }
 
-function StatCard({ title, value, change, positive }: any) {
+function StatCard({ title, value, change, positive }: { title: string; value: string; change: string; positive: boolean }) {
   return (
-    <Card className="border-border/40 bg-surface/50 border-t-[#0F766E]/20">
+    <Card className="border-border/40 bg-surface/50">
       <CardContent className="pt-6">
         <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{title}</p>
         <div className="flex items-end justify-between mt-1">
@@ -105,48 +32,167 @@ function StatCard({ title, value, change, positive }: any) {
   );
 }
 
-function ModernDonut({ percentage, label, amount, color }: any) {
-  return (
-    <div className="flex items-center gap-6 p-4 rounded-2xl bg-black/20 border border-border/10">
-       <div className="h-16 w-16 rounded-full border-[6px] border-[#0F766E]/10 relative flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-[6px] border-[#0F766E] border-t-transparent border-r-transparent rotate-12" />
-          <span className="text-xs font-bold">{percentage}%</span>
-       </div>
-       <div>
-          <p className="text-[10px] font-bold text-muted uppercase">{label}</p>
-          <p className="text-lg font-bold text-fg">{amount}</p>
-       </div>
-    </div>
-  );
-}
+export default function AnalyticsPharmacyPage() {
+  const [stats, setStats] = useState<PharmacyStats | null>(null);
+  const [, startTx] = useTransition();
 
-function LegendItem({ color, label, value }: any) {
-  return (
-    <div className="flex items-center justify-between text-xs py-1">
-      <div className="flex items-center gap-2">
-        <div className={cn("h-1.5 w-1.5 rounded-full", color)} />
-        <span className="text-muted-foreground">{label}</span>
-      </div>
-      <span className="font-bold text-fg">{value}</span>
-    </div>
-  );
-}
+  useEffect(() => {
+    startTx(async () => {
+      const data = await getPharmacyStats();
+      setStats(data);
+    });
+  }, []);
 
-function MovementCard({ title, icon: Icon, color, items }: any) {
+  const maxMonthly = Math.max(...(stats?.monthlyRevenue ?? [1]), 1);
+  const now = new Date();
+  const currentMonthIdx = now.getMonth();
+
   return (
-    <Card className="border-border/40 bg-surface/50 overflow-hidden">
-       <CardHeader className="flex flex-row items-center gap-2 border-b border-border/10 bg-black/10">
-          <Icon className={cn("h-4 w-4", color)} />
-          <CardTitle className="text-sm font-bold uppercase tracking-widest">{title}</CardTitle>
-       </CardHeader>
-       <CardContent className="pt-6 space-y-4">
-          {items.map((i: any) => (
-            <div key={i.label} className="flex justify-between items-center text-sm p-3 rounded-lg bg-black/20 border border-border/10">
-               <span className="font-medium text-muted-foreground">{i.label}</span>
-               <span className="font-mono text-xs font-bold text-[#0F766E]">{i.val}</span>
+    <>
+      <TopBar title="Pharmacy Performance Analytics" action={{ label: "MIS Reports", href: "/analytics/mis" }} />
+      <main className="p-8 space-y-8">
+
+        {!stats ? (
+          <div className="flex items-center justify-center py-24 gap-3 text-muted">
+            <Loader2 className="h-5 w-5 animate-spin text-[#0F766E]" />
+            <span className="text-sm">Loading pharmacy data…</span>
+          </div>
+        ) : (
+          <>
+            {/* KPI strip */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatCard
+                title="Gross Revenue (MTD)"
+                value={fmt(stats.grossRevenue)}
+                change={`${stats.revenueChange > 0 ? "+" : ""}${stats.revenueChange}%`}
+                positive={stats.revenueChange >= 0}
+              />
+              <StatCard
+                title="Last Month Revenue"
+                value={fmt(stats.lastMonthRevenue)}
+                change="vs prior month"
+                positive={stats.grossRevenue >= stats.lastMonthRevenue}
+              />
+              <StatCard
+                title="Total Prescriptions"
+                value={stats.totalPrescriptions.toLocaleString()}
+                change="all time"
+                positive
+              />
+              <StatCard
+                title="Avg Prescription Value"
+                value={fmt(stats.avgPrescriptionValue)}
+                change="per Rx"
+                positive
+              />
             </div>
-          ))}
-       </CardContent>
-    </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Top items table */}
+              <Card className="lg:col-span-1 border-border/40 bg-surface/50">
+                <CardHeader className="border-b border-border/20 pb-4">
+                  <CardTitle className="text-sm">Top Items by Revenue</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-2">
+                  {stats.topItems.length === 0 ? (
+                    <p className="text-xs text-muted text-center py-6">No billing data yet.</p>
+                  ) : (
+                    stats.topItems.map((item, i) => {
+                      const maxRev = stats.topItems[0]?.revenue ?? 1;
+                      return (
+                        <div key={i} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-300 truncate pr-2 max-w-[160px]">{item.name}</span>
+                            <span className="font-mono text-[#0F766E] shrink-0">{fmt(item.revenue)}</span>
+                          </div>
+                          <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#0F766E]/70 rounded-full"
+                              style={{ width: `${Math.round((item.revenue / maxRev) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 12-month revenue trend */}
+              <Card className="lg:col-span-2 border-border/40 bg-surface/50">
+                <CardHeader className="border-b border-border/20 pb-4 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-[#0F766E]" /> 12-Month Revenue Trend
+                  </CardTitle>
+                  <span className="text-[10px] text-muted">From live billing data</span>
+                </CardHeader>
+                <CardContent className="h-[260px] flex items-end gap-1 pb-6 pt-8">
+                  {stats.monthlyRevenue.map((val, i) => {
+                    const monthIdx = (currentMonthIdx - 11 + i + 12) % 12;
+                    const isCurrent = i === 11;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                        <div
+                          className={cn(
+                            "w-full rounded-t-sm transition-all",
+                            isCurrent ? "bg-[#0F766E]" : "bg-[#0F766E]/30 hover:bg-[#0F766E]/50"
+                          )}
+                          style={{ height: `${Math.max(4, Math.round((val / maxMonthly) * 100))}%` }}
+                          title={`${MONTHS_SHORT[monthIdx]}: ${fmt(val)}`}
+                        />
+                        <span className="text-[8px] text-muted font-mono">
+                          {MONTHS_SHORT[monthIdx]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Fast / Slow movers */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="border-border/40 bg-surface/50 overflow-hidden">
+                <CardHeader className="flex flex-row items-center gap-2 border-b border-border/10 bg-black/10">
+                  <Flame className="h-4 w-4 text-orange-500" />
+                  <CardTitle className="text-sm font-bold uppercase tracking-widest">Fast Moving — Top Rx Drugs</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-3">
+                  {stats.fastMoving.length === 0 ? (
+                    <p className="text-xs text-muted text-center py-4">No prescription data.</p>
+                  ) : (
+                    stats.fastMoving.map((d, i) => (
+                      <div key={i} className="flex justify-between items-center text-sm p-3 rounded-lg bg-black/20 border border-border/10">
+                        <span className="font-medium text-muted-foreground truncate pr-2">{d.name}</span>
+                        <span className="font-mono text-xs font-bold text-orange-400 shrink-0">{d.count} Rx</span>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/40 bg-surface/50 overflow-hidden">
+                <CardHeader className="flex flex-row items-center gap-2 border-b border-border/10 bg-black/10">
+                  <Snowflake className="h-4 w-4 text-blue-500" />
+                  <CardTitle className="text-sm font-bold uppercase tracking-widest">Slow Moving — Low Rx Drugs</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-3">
+                  {stats.slowMoving.length === 0 ? (
+                    <p className="text-xs text-muted text-center py-4">No prescription data.</p>
+                  ) : (
+                    stats.slowMoving.map((d, i) => (
+                      <div key={i} className="flex justify-between items-center text-sm p-3 rounded-lg bg-black/20 border border-border/10">
+                        <span className="font-medium text-muted-foreground truncate pr-2">{d.name}</span>
+                        <span className="font-mono text-xs font-bold text-blue-400 shrink-0">{d.count} Rx</span>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
+      </main>
+    </>
   );
 }

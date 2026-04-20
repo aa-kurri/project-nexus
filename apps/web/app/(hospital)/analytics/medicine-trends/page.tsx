@@ -51,14 +51,16 @@ export default function MedicineTrendsPage() {
     setLoading(true);
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
 
+    // medication_requests has no created_at — join via encounter for date
     const { data } = await supabase
       .from("medication_requests")
-      .select("medication_code, display, created_at")
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
+      .select("drug_name, encounter:encounter_id(started_at)")
       .limit(1000);
 
-    const rows = data ?? [];
+    const rows = (data ?? []) as Array<{
+      drug_name: string | null;
+      encounter: { started_at: string } | null;
+    }>;
 
     // Build 7-day label buckets
     const dayLabels: string[] = [];
@@ -67,11 +69,15 @@ export default function MedicineTrendsPage() {
       dayLabels.push(d.toLocaleDateString());
     }
 
+    const sinceDateMs = Date.now() - 30 * 86400000;
+
     const countMap: Record<string, { name: string; total: number; days: Record<string, number> }> = {};
     for (const r of rows) {
-      const key  = (r as Record<string, unknown>).medication_code as string ?? "unknown";
-      const name = (r as Record<string, unknown>).display as string ?? key;
-      const day  = new Date((r as Record<string, unknown>).created_at as string).toLocaleDateString();
+      const startedAt = r.encounter?.started_at;
+      if (startedAt && new Date(startedAt).getTime() < sinceDateMs) continue;
+      const key  = r.drug_name ?? "Unknown";
+      const name = key;
+      const day  = startedAt ? new Date(startedAt).toLocaleDateString() : new Date().toLocaleDateString();
       if (!countMap[key]) countMap[key] = { name, total: 0, days: {} };
       countMap[key].total++;
       countMap[key].days[day] = (countMap[key].days[day] ?? 0) + 1;
