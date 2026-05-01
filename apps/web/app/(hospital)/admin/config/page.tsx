@@ -17,14 +17,19 @@ const SECTIONS: { id: ConfigSection; label: string; icon: React.ElementType }[] 
 ];
 
 const HOSPITAL_CONFIG = [
-  { label: "Hospital Name",     value: "City General Hospitals",   editable: true },
-  { label: "License Number",    value: "HOS-TS-2019-00123",        editable: false },
-  { label: "GSTIN",             value: "36AAACH1234F1ZP",          editable: true },
-  { label: "Address",           value: "Himayatnagar, Hyderabad",  editable: true },
-  { label: "State",             value: "Telangana",                editable: true },
-  { label: "Timezone",          value: "Asia/Kolkata (IST)",       editable: true },
-  { label: "Date Format",       value: "DD-MM-YYYY",               editable: true },
-  { label: "Currency",          value: "INR (₹)",                  editable: false },
+  { label: "Hospital Name",         value: "City General Hospitals",      editable: true },
+  { label: "Logo URL",              value: "https://example.com/logo.png",editable: true },
+  { label: "License Number",        value: "HOS-TS-2019-00123",           editable: true },
+  { label: "GSTIN",                 value: "36AAACH1234F1ZP",             editable: true },
+  { label: "Address",               value: "Himayatnagar, Hyderabad",     editable: true },
+  { label: "State",                 value: "Telangana",                   editable: true },
+  { label: "Primary Contact",       value: "+91 98765 43210",             editable: true },
+  { label: "Emergency Helpline",    value: "1066",                        editable: true },
+  { label: "Email Address",         value: "contact@citygeneral.in",      editable: true },
+  { label: "Website",               value: "www.citygeneral.in",          editable: true },
+  { label: "Timezone",              value: "Asia/Kolkata (IST)",          editable: true },
+  { label: "Date Format",           value: "DD-MM-YYYY",                  editable: true },
+  { label: "Currency",              value: "INR (₹)",                     editable: true },
 ];
 
 const DEPARTMENTS = [
@@ -46,7 +51,7 @@ const BILLING_FIELDS = [
   { label: "Default Payment Terms", value: "Due on discharge",editable: true },
   { label: "Credit Days (TPA)",     value: "30",              editable: true },
   { label: "Late Payment Charge %", value: "1.5",             editable: true },
-  { label: "GST Registration No.",  value: "36AAACH1234F1ZP", editable: false },
+  { label: "GST Registration No.",  value: "36AAACH1234F1ZP", editable: true },
 ];
 
 const BILLING_TOGGLES = [
@@ -118,10 +123,10 @@ export default function ConfigMasterPage() {
   return (
     <>
       <TopBar title="Configuration Master" action={{ label: "Save Changes", href: "#" }} />
-      <main className="p-8 flex gap-8">
+      <main className="p-4 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 overflow-x-hidden">
         {/* Left nav */}
-        <aside className="w-52 shrink-0">
-          <nav className="space-y-0.5">
+        <aside className="w-full md:w-52 shrink-0 overflow-x-auto pb-2 md:pb-0">
+          <nav className="flex md:flex-col gap-2 md:gap-0 space-y-0 md:space-y-0.5">
             {SECTIONS.map((s) => {
               const Icon = s.icon;
               return (
@@ -129,14 +134,14 @@ export default function ConfigMasterPage() {
                   key={s.id}
                   onClick={() => setSection(s.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all text-left",
+                    "w-max md:w-full flex items-center gap-2 md:gap-3 rounded-lg px-3 py-2 md:py-2.5 text-sm font-medium transition-all text-left shrink-0 md:shrink",
                     section === s.id
                       ? "bg-[#0F766E]/15 text-[#0F766E]"
                       : "text-muted hover:bg-white/5 hover:text-fg"
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {s.label}
+                  <span className="whitespace-nowrap">{s.label}</span>
                 </button>
               );
             })}
@@ -152,8 +157,8 @@ export default function ConfigMasterPage() {
               </CardHeader>
               <CardContent className="pt-6 space-y-0">
                 {HOSPITAL_CONFIG.map((item) => (
-                  <div key={item.label} className="flex items-center py-3.5 border-b border-white/5 last:border-0 gap-8">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 w-44 shrink-0">
+                  <div key={item.label} className="flex flex-col md:flex-row md:items-center py-3.5 border-b border-white/5 last:border-0 gap-2 md:gap-8">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 w-full md:w-44 shrink-0">
                       {item.label}
                     </span>
                     {item.editable ? (
@@ -175,8 +180,8 @@ export default function ConfigMasterPage() {
               <CardHeader className="border-b border-border/20 pb-4">
                 <CardTitle className="text-sm">Departments & Units</CardTitle>
               </CardHeader>
-              <CardContent className="pt-0">
-                <table className="w-full text-sm">
+              <CardContent className="pt-0 overflow-x-auto">
+                <table className="w-full text-sm min-w-[500px]">
                   <thead>
                     <tr className="border-b border-white/5">
                       {["Dept Name", "Code", "Beds", "Status"].map((h) => (
@@ -218,8 +223,8 @@ export default function ConfigMasterPage() {
                 </CardHeader>
                 <CardContent className="pt-6 space-y-0">
                   {BILLING_FIELDS.map((item) => (
-                    <div key={item.label} className="flex items-center py-3.5 border-b border-white/5 last:border-0 gap-8">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 w-52 shrink-0">
+                    <div key={item.label} className="flex flex-col md:flex-row md:items-center py-3.5 border-b border-white/5 last:border-0 gap-2 md:gap-8">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 w-full md:w-52 shrink-0">
                         {item.label}
                       </span>
                       {item.editable ? (
@@ -275,8 +280,8 @@ export default function ConfigMasterPage() {
                 <CardHeader className="border-b border-border/20 pb-4">
                   <CardTitle className="text-sm">Notification Events</CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0">
-                  <table className="w-full text-sm">
+                <CardContent className="pt-0 overflow-x-auto">
+                  <table className="w-full text-sm min-w-[500px]">
                     <thead>
                       <tr className="border-b border-white/5">
                         <th className="text-left py-3 text-[10px] uppercase tracking-widest text-slate-500 font-bold">Event</th>
@@ -312,8 +317,8 @@ export default function ConfigMasterPage() {
                 </CardHeader>
                 <CardContent className="pt-6 space-y-0">
                   {SECURITY_FIELDS.map((item) => (
-                    <div key={item.label} className="flex items-center py-3.5 border-b border-white/5 last:border-0 gap-8">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 w-52 shrink-0">
+                    <div key={item.label} className="flex flex-col md:flex-row md:items-center py-3.5 border-b border-white/5 last:border-0 gap-2 md:gap-8">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 w-full md:w-52 shrink-0">
                         {item.label}
                       </span>
                       <input

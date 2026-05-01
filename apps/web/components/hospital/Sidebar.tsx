@@ -163,7 +163,18 @@ export function Sidebar() {
   const pathname = usePathname();
   const supabase = createClient();
   const [open, setOpen] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const handleToggle = () => setMobileOpen(p => !p);
+    document.addEventListener('toggleSidebar', handleToggle);
+    return () => document.removeEventListener('toggleSidebar', handleToggle);
+  }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   // Set of enabled module_ids for this tenant; null = still loading (show all)
   const [enabledModules, setEnabledModules] = useState<Set<string> | null>(null);
@@ -200,7 +211,17 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-border bg-surface">
+    <>
+      {mobileOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-surface transition-transform duration-300 md:translate-x-0",
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
       {/* Logo */}
       <div className="flex h-16 items-center gap-2.5 border-b border-border px-5">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0F766E] text-white">
@@ -284,6 +305,7 @@ export function Sidebar() {
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

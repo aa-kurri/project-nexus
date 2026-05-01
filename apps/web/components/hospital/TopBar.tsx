@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Bell, Plus } from "lucide-react";
+import { Bell, Plus, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { createClient } from "@/utils/supabase/client";
@@ -63,8 +63,16 @@ export function TopBar({ title, action, showLogout = true }: TopBarProps) {
   const initial = userName ? userName[0].toUpperCase() : "U";
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-surface/80 px-6 backdrop-blur-sm sticky top-0 z-30">
-      <h1 className="font-display text-xl font-semibold tracking-tight text-fg">{title}</h1>
+    <header className="flex h-16 items-center justify-between border-b border-border bg-surface/80 px-4 md:px-6 backdrop-blur-sm sticky top-0 z-30">
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={() => document.dispatchEvent(new CustomEvent('toggleSidebar'))} 
+          className="md:hidden p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface transition-colors"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <h1 className="font-display text-lg md:text-xl font-semibold tracking-tight text-fg truncate">{title}</h1>
+      </div>
       <div className="flex items-center gap-3">
         {action && (
           <Link href={action.href}>
